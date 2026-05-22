@@ -194,7 +194,87 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
           <p style={{ color: 'var(--text-secondary)' }}>No se encontraron préstamos.</p>
         </div>
       ) : (
-        <div className="table-container">
+        <>
+          {/* Vista de Tarjetas para Móvil */}
+          <div className="mobile-cards">
+            {filteredPrestamos.map((loan) => {
+              const isExpanded = expandedLoanId === loan.id;
+              const isActivo = parseFloat(loan.capital_pendiente) > 0;
+              return (
+                <div key={loan.id} className="card loan-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <span style={{ fontWeight: '700', fontSize: '1rem' }}>{loan.deudor}</span>
+                    <span className={`badge ${isActivo ? 'danger' : 'success'}`}>
+                      {isActivo ? 'Activo' : 'Pagado'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Capital</span>
+                      <span style={{ fontWeight: '600' }}>{formatCOP(loan.capital_original)}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Pendiente</span>
+                      <span className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.capital_pendiente)}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span>
+                      <span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Meses</span>
+                      <span style={{ fontWeight: '500' }}>{loan.tasa_interes}% · {loan.meses_transcurridos}m</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                    {isActivo && (
+                      <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1 }}>
+                        <Receipt size={14} /> Abonar
+                      </button>
+                    )}
+                    <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)}>
+                      <Edit size={14} />
+                    </button>
+                    <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                      <Trash2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleToggleExpand(loan.id)}
+                      className="btn btn-secondary btn-small"
+                    >
+                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                  </div>
+                  {isExpanded && loanAbonos[loan.id] && loanAbonos[loan.id].length > 0 && (
+                    <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                      <p style={{ fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Historial de Abonos</p>
+                      {loanAbonos[loan.id].map((abono) => (
+                        <div key={abono.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                          <div>
+                            <span className={abono.tipo === 'capital' ? 'text-green' : 'text-yellow'} style={{ fontWeight: '600' }}>{formatCOP(abono.monto)}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.7rem' }}>{abono.tipo === 'capital' ? 'Capital' : 'Interés'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{formatFecha(abono.fecha)}</span>
+                            <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeleteAbono(abono.id, loan.id)} style={{ borderColor: 'transparent', padding: '0.15rem' }}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {isExpanded && (!loanAbonos[loan.id] || loanAbonos[loan.id].length === 0) && (
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>Sin abonos registrados.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Vista de Tabla para Desktop */}
+          <div className="desktop-table">
+          <div className="table-container">
           <div className="table-wrapper">
             <table>
               <thead>
@@ -335,7 +415,9 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+          </div>
+        </>
       )}
 
       {/* Modal para Crear Préstamo */}

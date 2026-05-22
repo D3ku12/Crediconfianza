@@ -236,6 +236,25 @@
     .metric-value {
       font-size: 1.5rem;
     }
+    /* Mostrar tarjetas en móvil, ocultar tabla */
+    .mobile-cards {
+      display: flex !important;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .desktop-table {
+      display: none !important;
+    }
+    .loan-card {
+      padding: 1rem;
+    }
+    .user-badge {
+      display: none;
+    }
+    .abonos-grid {
+      grid-template-columns: 1fr !important;
+      gap: 1rem !important;
+    }
   }
   
   /* Header superior con nombre de usuario */
@@ -877,4 +896,12 @@
   .search-input {
     width: 100%;
     padding-left: 2.25rem !important;
+  }
+
+  /* Vista dual: tarjetas en móvil / tabla en desktop */
+  .mobile-cards {
+    display: none;
+  }
+  .desktop-table {
+    display: block;
   }

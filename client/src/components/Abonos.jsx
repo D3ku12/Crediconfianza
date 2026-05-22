@@ -103,7 +103,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: selectedLoanData ? '1.2fr 1fr' : '1fr', gap: '2rem' }}>
+      <div className="abonos-grid" style={{ display: 'grid', gridTemplateColumns: selectedLoanData ? '1.2fr 1fr' : '1fr', gap: '2rem' }}>
         
         {/* Formulario */}
         <div className="card">
