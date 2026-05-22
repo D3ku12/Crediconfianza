@@ -1,0 +1,16 @@
+{
+  "name": "prestamos-app",
+  "version": "1.0.0",
+  "description": "Sistema de gestión de préstamos fullstack",
+  "main": "server/index.js",
+  "scripts": {
+    "postinstall": "npm install --prefix client && npm install --prefix server",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "build": "npm run build --prefix client",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
