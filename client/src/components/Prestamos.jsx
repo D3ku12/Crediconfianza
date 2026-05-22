@@ -16,6 +16,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0]);
   const [modalError, setModalError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [listaDeudores, setListaDeudores] = useState([]);
 
   // Fila colapsable de abonos
   const [expandedLoanId, setExpandedLoanId] = useState(null);
@@ -39,13 +40,21 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     fetchPrestamos();
   }, []);
 
-  const handleOpenModal = () => {
+  const handleOpenModal = async () => {
     setDeudor('');
     setCapitalOriginal('');
     setTasaInteres('20');
     setFechaInicio(new Date().toISOString().split('T')[0]);
     setModalError('');
     setIsModalOpen(true);
+    
+    // Cargar lista de deudores previos para el autocompletado
+    try {
+      const deudores = await api.getDeudores();
+      setListaDeudores(deudores);
+    } catch (err) {
+      console.error('Error al cargar la lista de clientes', err);
+    }
   };
 
   const handleCreatePrestamo = async (e) => {
@@ -278,7 +287,14 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     style={{ paddingLeft: '2.25rem', width: '100%' }}
                     disabled={creating}
                     required
+                    list="deudores-list"
+                    autoComplete="off"
                   />
+                  <datalist id="deudores-list">
+                    {listaDeudores.map((nombre, idx) => (
+                      <option key={idx} value={nombre} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 

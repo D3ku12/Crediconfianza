@@ -190,6 +190,24 @@ app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res)
 
 
 // ==========================================
+// RUTAS DE CLIENTES (DEUDORES)
+// ==========================================
+
+// GET /api/deudores -> Obtener lista de nombres únicos de deudores del usuario
+app.get('/api/deudores', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT DISTINCT deudor FROM prestamos WHERE usuario_id = $1 ORDER BY deudor ASC',
+      [req.user.id]
+    );
+    res.json(result.rows.map(row => row.deudor));
+  } catch (error) {
+    console.error('Error al obtener deudores:', error);
+    res.status(500).json({ mensaje: 'Error al obtener lista de clientes.' });
+  }
+});
+
+// ==========================================
 // RUTAS DE PRÉSTAMOS
 // ==========================================
 

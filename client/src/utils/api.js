@@ -48,8 +48,9 @@ export const api = {
       body: JSON.stringify({ nombre_usuario, username, password, es_admin }),
     }),
 
-  // Préstamos
+  // Préstamos y Deudores
   getPrestamos: () => request('/api/prestamos'),
+  getDeudores: () => request('/api/deudores'),
   
   createPrestamo: (prestamo) => 
     request('/api/prestamos', {
