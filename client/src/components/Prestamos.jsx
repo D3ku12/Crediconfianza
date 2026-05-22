@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, formatCOP, formatFecha } from '../utils/api';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, AlertCircle } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, AlertCircle, Edit, Trash2 } from 'lucide-react';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [prestamos, setPrestamos] = useState([]);
@@ -10,6 +10,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   
   // Estados del modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingLoanId, setEditingLoanId] = useState(null);
   const [deudor, setDeudor] = useState('');
   const [capitalOriginal, setCapitalOriginal] = useState('');
   const [tasaInteres, setTasaInteres] = useState('20');
@@ -47,6 +48,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setFechaInicio(new Date().toISOString().split('T')[0]);
     setModalError('');
     setIsModalOpen(true);
+    setEditingLoanId(null);
     
     // Cargar lista de deudores previos para el autocompletado
     try {
@@ -68,18 +70,63 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setModalError('');
 
     try {
-      await api.createPrestamo({
-        deudor,
-        capital_original: parseFloat(capitalOriginal),
-        tasa_interes: parseFloat(tasaInteres),
-        fecha_inicio: fechaInicio,
-      });
+      if (editingLoanId) {
+        await api.updatePrestamo(editingLoanId, {
+          deudor,
+          capital_original: parseFloat(capitalOriginal),
+          tasa_interes: parseFloat(tasaInteres),
+          fecha_inicio: fechaInicio,
+        });
+      } else {
+        await api.createPrestamo({
+          deudor,
+          capital_original: parseFloat(capitalOriginal),
+          tasa_interes: parseFloat(tasaInteres),
+          fecha_inicio: fechaInicio,
+        });
+      }
       setIsModalOpen(false);
       fetchPrestamos();
     } catch (err) {
-      setModalError(err.message || 'Error al crear el préstamo.');
+      setModalError(err.message || 'Error al guardar el préstamo.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleEditClick = (loan) => {
+    setDeudor(loan.deudor);
+    setCapitalOriginal(loan.capital_original.toString());
+    setTasaInteres(loan.tasa_interes.toString());
+    setFechaInicio(loan.fecha_inicio.split('T')[0]);
+    setModalError('');
+    setEditingLoanId(loan.id);
+    setIsModalOpen(true);
+  };
+
+  const handleDeletePrestamo = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este préstamo? Se borrarán todos sus abonos. Esta acción no se puede deshacer.')) {
+      try {
+        await api.deletePrestamo(id);
+        fetchPrestamos();
+      } catch (err) {
+        alert(err.message || 'Error al eliminar el préstamo');
+      }
+    }
+  };
+
+  const handleDeleteAbono = async (abonoId, prestamoId) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este abono? Si fue a capital, el saldo pendiente aumentará.')) {
+      try {
+        await api.deleteAbono(abonoId);
+        // Actualizar subtabla de abonos
+        const data = await api.getAbonos(prestamoId);
+        setLoanAbonos(prev => ({ ...prev, [prestamoId]: data }));
+        // Actualizar lista principal
+        fetchPrestamos();
+      } catch (err) {
+        alert(err.message || 'Error al eliminar el abono');
+      }
     }
   };
 
@@ -197,15 +244,32 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                           </span>
                         </td>
                         <td>
-                          {isActivo && (
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {isActivo && (
+                              <button
+                                className="btn btn-secondary btn-small"
+                                onClick={() => handleQuickAbonar(loan)}
+                                title="Registrar Abono"
+                              >
+                                <Receipt size={14} />
+                              </button>
+                            )}
                             <button
                               className="btn btn-secondary btn-small"
-                              onClick={() => handleQuickAbonar(loan)}
+                              onClick={() => handleEditClick(loan)}
+                              title="Editar"
                             >
-                              <Receipt size={14} />
-                              Abonar
+                              <Edit size={14} />
                             </button>
-                          )}
+                            <button
+                              className="btn btn-secondary btn-small text-red"
+                              onClick={() => handleDeletePrestamo(loan.id)}
+                              style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                              title="Eliminar"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       
@@ -230,6 +294,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                                       <th style={{ padding: '0.5rem 1rem' }}>Monto</th>
                                       <th style={{ padding: '0.5rem 1rem' }}>Tipo</th>
                                       <th style={{ padding: '0.5rem 1rem' }}>Nota</th>
+                                      <th style={{ padding: '0.5rem 1rem' }}>Acciones</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -245,6 +310,16 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                                           </span>
                                         </td>
                                         <td style={{ padding: '0.65rem 1rem', color: 'var(--text-secondary)' }}>{abono.nota || '—'}</td>
+                                        <td style={{ padding: '0.65rem 1rem' }}>
+                                          <button
+                                            className="btn btn-secondary btn-small text-red"
+                                            onClick={() => handleDeleteAbono(abono.id, loan.id)}
+                                            style={{ borderColor: 'transparent', padding: '0.2rem' }}
+                                            title="Eliminar Abono"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -268,7 +343,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
         <div className="modal-overlay">
           <div className="modal-content">
             <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
-            <h3 className="modal-title">Nuevo Préstamo</h3>
+            <h3 className="modal-title">{editingLoanId ? 'Editar Préstamo' : 'Nuevo Préstamo'}</h3>
             
             {modalError && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{modalError}</div>}
             
@@ -359,7 +434,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                   Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={creating}>
-                  {creating ? 'Guardando...' : 'Crear Préstamo'}
+                  {creating ? 'Guardando...' : (editingLoanId ? 'Guardar Cambios' : 'Crear Préstamo')}
                 </button>
               </div>
             </form>

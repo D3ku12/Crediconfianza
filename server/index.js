@@ -291,6 +291,64 @@ app.post('/api/prestamos', authenticateToken, async (req, res) => {
 });
 
 
+// PUT /api/prestamos/:id -> Editar préstamo
+app.put('/api/prestamos/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { deudor, capital_original, tasa_interes, fecha_inicio } = req.body;
+  
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Verificar que el préstamo pertenece al usuario
+    const loanCheck = await client.query('SELECT capital_original, capital_pendiente FROM prestamos WHERE id = $1 AND usuario_id = $2', [id, req.user.id]);
+    if (loanCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ mensaje: 'Préstamo no encontrado.' });
+    }
+    
+    const oldOriginal = parseFloat(loanCheck.rows[0].capital_original);
+    const oldPendiente = parseFloat(loanCheck.rows[0].capital_pendiente);
+    
+    const newOriginal = parseFloat(capital_original);
+    // Ajustar el capital pendiente en la misma proporción que cambió el original
+    const diferencia = newOriginal - oldOriginal;
+    const newPendiente = Math.max(0, oldPendiente + diferencia);
+    const esActivo = newPendiente > 0;
+    
+    await client.query(
+      `UPDATE prestamos 
+       SET deudor = $1, capital_original = $2, capital_pendiente = $3, tasa_interes = $4, fecha_inicio = $5, activo = $6
+       WHERE id = $7`,
+      [deudor, newOriginal, newPendiente, parseFloat(tasa_interes), fecha_inicio, esActivo, id]
+    );
+    
+    await client.query('COMMIT');
+    res.json({ mensaje: 'Préstamo actualizado con éxito.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al editar préstamo:', error);
+    res.status(500).json({ mensaje: 'Error al editar préstamo.' });
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /api/prestamos/:id -> Eliminar préstamo
+app.delete('/api/prestamos/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.query('DELETE FROM prestamos WHERE id = $1 AND usuario_id = $2 RETURNING id', [id, req.user.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: 'Préstamo no encontrado.' });
+    }
+    res.json({ mensaje: 'Préstamo eliminado con éxito.' });
+  } catch (error) {
+    console.error('Error al eliminar préstamo:', error);
+    res.status(500).json({ mensaje: 'Error al eliminar préstamo.' });
+  }
+});
+
 // ==========================================
 // RUTAS DE ABONOS
 // ==========================================
@@ -395,6 +453,50 @@ app.get('/api/prestamos/:id/abonos', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error al obtener abonos:', error);
     res.status(500).json({ mensaje: 'Error al obtener el historial de abonos.' });
+  }
+});
+
+
+// DELETE /api/abonos/:id -> Eliminar abono
+app.delete('/api/abonos/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const client = await db.pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Buscar el abono y verificar que el préstamo asociado pertenece al usuario
+    const abonoCheck = await client.query(
+      `SELECT a.monto, a.tipo, a.prestamo_id, p.usuario_id, p.capital_pendiente 
+       FROM abonos a
+       JOIN prestamos p ON a.prestamo_id = p.id
+       WHERE a.id = $1`,
+      [id]
+    );
+    
+    if (abonoCheck.rows.length === 0 || abonoCheck.rows[0].usuario_id !== req.user.id) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ mensaje: 'Abono no encontrado.' });
+    }
+    
+    const abono = abonoCheck.rows[0];
+    
+    // Si era un abono a capital, restaurar el capital pendiente en el préstamo
+    if (abono.tipo === 'capital') {
+      const nuevoPendiente = parseFloat(abono.capital_pendiente) + parseFloat(abono.monto);
+      await client.query('UPDATE prestamos SET capital_pendiente = $1, activo = TRUE WHERE id = $2', [nuevoPendiente, abono.prestamo_id]);
+    }
+    
+    await client.query('DELETE FROM abonos WHERE id = $1', [id]);
+    
+    await client.query('COMMIT');
+    res.json({ mensaje: 'Abono eliminado con éxito.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar abono:', error);
+    res.status(500).json({ mensaje: 'Error al eliminar abono.' });
+  } finally {
+    client.release();
   }
 });
 

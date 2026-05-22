@@ -58,11 +58,27 @@ export const api = {
       body: JSON.stringify(prestamo),
     }),
 
+  updatePrestamo: (id, prestamo) =>
+    request(`/api/prestamos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(prestamo),
+    }),
+    
+  deletePrestamo: (id) =>
+    request(`/api/prestamos/${id}`, {
+      method: 'DELETE',
+    }),
+
   // Abonos
   createAbono: (abono) => 
     request('/api/abonos', {
       method: 'POST',
       body: JSON.stringify(abono),
+    }),
+    
+  deleteAbono: (id) =>
+    request(`/api/abonos/${id}`, {
+      method: 'DELETE',
     }),
     
   getAbonos: (prestamoId) => request(`/api/prestamos/${prestamoId}/abonos`),
