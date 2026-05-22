@@ -59,6 +59,20 @@ async function initializeDatabase() {
       );
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transacciones_caja (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+        prestamo_id INTEGER REFERENCES prestamos(id) ON DELETE CASCADE,
+        abono_id INTEGER REFERENCES abonos(id) ON DELETE CASCADE,
+        monto NUMERIC(15,2) NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        descripcion TEXT NOT NULL,
+        fecha DATE NOT NULL,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     // Crear admin inicial si no existe
     const adminName = process.env.ADMIN_NAME || 'JOHAN HUERTAS';
     const adminUsername = process.env.ADMIN_USERNAME || 'stevenhm03@gmail.com';
@@ -275,18 +289,49 @@ app.post('/api/prestamos', authenticateToken, async (req, res) => {
   }
 
   const tasa = tasa_interes !== undefined ? parseFloat(tasa_interes) : 20.00;
+  const montoPrestamo = parseFloat(capital_original);
 
+  const client = await db.pool.connect();
   try {
-    const result = await db.query(
+    await client.query('BEGIN');
+
+    // 1. Obtener saldo actual en caja
+    const saldoRes = await client.query(
+      'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = $1',
+      [req.user.id]
+    );
+    const saldoCaja = parseFloat(saldoRes.rows[0].saldo);
+
+    if (saldoCaja < montoPrestamo) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ 
+        mensaje: `Saldo insuficiente en caja para realizar este préstamo. Disponible: $${saldoCaja.toLocaleString('es-CO')}` 
+      });
+    }
+
+    // 2. Insertar el préstamo
+    const result = await client.query(
       `INSERT INTO prestamos (usuario_id, deudor, capital_original, capital_pendiente, tasa_interes, fecha_inicio, activo) 
        VALUES ($1, $2, $3, $3, $4, $5, TRUE) RETURNING *`,
-      [req.user.id, deudor, parseFloat(capital_original), tasa, fecha_inicio]
+      [req.user.id, deudor, montoPrestamo, tasa, fecha_inicio]
+    );
+    const nuevoPrestamo = result.rows[0];
+
+    // 3. Registrar el egreso en caja
+    await client.query(
+      `INSERT INTO transacciones_caja (usuario_id, prestamo_id, monto, tipo, descripcion, fecha)
+       VALUES ($1, $2, $3, 'prestamo', $4, $5)`,
+      [req.user.id, nuevoPrestamo.id, -montoPrestamo, `Préstamo otorgado a ${deudor}`, fecha_inicio]
     );
     
-    res.status(201).json(result.rows[0]);
+    await client.query('COMMIT');
+    res.status(201).json(nuevoPrestamo);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error al crear préstamo:', error);
     res.status(500).json({ mensaje: 'Error al crear préstamo.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -311,8 +356,23 @@ app.put('/api/prestamos/:id', authenticateToken, async (req, res) => {
     const oldPendiente = parseFloat(loanCheck.rows[0].capital_pendiente);
     
     const newOriginal = parseFloat(capital_original);
-    // Ajustar el capital pendiente en la misma proporción que cambió el original
     const diferencia = newOriginal - oldOriginal;
+    
+    // Si incrementa el préstamo, verificar fondos en caja
+    if (diferencia > 0) {
+      const saldoRes = await client.query(
+        'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = $1',
+        [req.user.id]
+      );
+      const saldoCaja = parseFloat(saldoRes.rows[0].saldo);
+      if (saldoCaja < diferencia) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ 
+          mensaje: `Saldo insuficiente en caja para ampliar el préstamo. Requiere $${diferencia.toLocaleString('es-CO')} adicionales.` 
+        });
+      }
+    }
+
     const newPendiente = Math.max(0, oldPendiente + diferencia);
     const esActivo = newPendiente > 0;
     
@@ -321,6 +381,14 @@ app.put('/api/prestamos/:id', authenticateToken, async (req, res) => {
        SET deudor = $1, capital_original = $2, capital_pendiente = $3, tasa_interes = $4, fecha_inicio = $5, activo = $6
        WHERE id = $7`,
       [deudor, newOriginal, newPendiente, parseFloat(tasa_interes), fecha_inicio, esActivo, id]
+    );
+
+    // Actualizar la transacción en caja correspondiente
+    await client.query(
+      `UPDATE transacciones_caja 
+       SET monto = $1, descripcion = $2, fecha = $3
+       WHERE prestamo_id = $4 AND tipo = 'prestamo'`,
+      [-newOriginal, `Préstamo otorgado a ${deudor} (Modificado)`, fecha_inicio, id]
     );
     
     await client.query('COMMIT');
@@ -414,11 +482,30 @@ app.post('/api/abonos', authenticateToken, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [prestamo_id, montoAbono, tipo, fecha, nota || null]
     );
+    const nuevoAbono = abonoInsert.rows[0];
+
+    // Registrar el ingreso en caja
+    const tipoCaja = tipo === 'capital' ? 'abono_capital' : 'abono_interes';
+    const conceptoDescr = tipo === 'capital' ? 'Abono a capital' : 'Abono a interés';
+    
+    await client.query(
+      `INSERT INTO transacciones_caja (usuario_id, prestamo_id, abono_id, monto, tipo, descripcion, fecha)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        req.user.id, 
+        prestamo_id, 
+        nuevoAbono.id, 
+        montoAbono, 
+        tipoCaja, 
+        `${conceptoDescr} - Cliente: ${loan.deudor}`, 
+        fecha
+      ]
+    );
     
     await client.query('COMMIT');
     res.status(201).json({
       mensaje: 'Abono registrado con éxito.',
-      abono: abonoInsert.rows[0]
+      abono: nuevoAbono
     });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -502,12 +589,100 @@ app.delete('/api/abonos/:id', authenticateToken, async (req, res) => {
 
 
 // ==========================================
+// RUTAS DE GESTIÓN DE CAJA
+// ==========================================
+
+// GET /api/caja/saldo -> Obtener saldo actual
+app.get('/api/caja/saldo', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = $1',
+      [req.user.id]
+    );
+    res.json({ saldo: parseFloat(result.rows[0].saldo) });
+  } catch (error) {
+    console.error('Error al obtener saldo de caja:', error);
+    res.status(500).json({ mensaje: 'Error al obtener saldo de caja.' });
+  }
+});
+
+// GET /api/caja/transacciones -> Obtener todas las transacciones
+app.get('/api/caja/transacciones', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM transacciones_caja WHERE usuario_id = $1 ORDER BY creado_en DESC, id DESC',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener transacciones de caja:', error);
+    res.status(500).json({ mensaje: 'Error al obtener transacciones de caja.' });
+  }
+});
+
+// POST /api/caja/transacciones -> Registrar transacción manual (aporte o egreso)
+app.post('/api/caja/transacciones', authenticateToken, async (req, res) => {
+  const { monto, tipo, descripcion, fecha } = req.body;
+  
+  if (!monto || !tipo || !descripcion || !fecha) {
+    return res.status(400).json({ mensaje: 'Monto, tipo (ingreso/egreso), descripción y fecha son requeridos.' });
+  }
+
+  if (tipo !== 'ingreso' && tipo !== 'egreso') {
+    return res.status(400).json({ mensaje: 'El tipo debe ser "ingreso" o "egreso".' });
+  }
+
+  const valorMonto = parseFloat(monto);
+  if (valorMonto <= 0) {
+    return res.status(400).json({ mensaje: 'El monto debe ser mayor a cero.' });
+  }
+
+  // Guardar egresos como monto negativo y aportes como positivo
+  const montoReal = tipo === 'egreso' ? -valorMonto : valorMonto;
+
+  try {
+    // Si es un egreso, podemos validar si hay fondos suficientes
+    if (tipo === 'egreso') {
+      const saldoRes = await db.query(
+        'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = $1',
+        [req.user.id]
+      );
+      const saldoCaja = parseFloat(saldoRes.rows[0].saldo);
+      if (saldoCaja < valorMonto) {
+        return res.status(400).json({ 
+          mensaje: `Saldo insuficiente en caja para realizar este egreso. Disponible: $${saldoCaja.toLocaleString('es-CO')}` 
+        });
+      }
+    }
+
+    const result = await db.query(
+      `INSERT INTO transacciones_caja (usuario_id, monto, tipo, descripcion, fecha)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.user.id, montoReal, tipo, descripcion, fecha]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al registrar transacción de caja:', error);
+    res.status(500).json({ mensaje: 'Error al registrar transacción de caja.' });
+  }
+});
+
+
+// ==========================================
 // RUTA DE RESUMEN METRICAS
 // ==========================================
 
 // GET /api/resumen -> Totales generales y datos de gráfica para el dashboard
 app.get('/api/resumen', authenticateToken, async (req, res) => {
   try {
+    // 0. Obtener saldo de caja
+    const saldoRes = await db.query(
+      'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = $1',
+      [req.user.id]
+    );
+    const saldoCaja = parseFloat(saldoRes.rows[0].saldo);
+
     // 1. Obtener todos los préstamos del usuario
     const prestamosRes = await db.query(
       'SELECT id, deudor, capital_original, capital_pendiente, tasa_interes, fecha_inicio, activo FROM prestamos WHERE usuario_id = $1',
@@ -581,7 +756,8 @@ app.get('/api/resumen', authenticateToken, async (req, res) => {
         totalPrestado,
         interesesPendientes: totalInteresesPendientes,
         capitalRecuperado: totalCapitalRecuperado,
-        interesesCobrados: totalInteresesCobrados
+        interesesCobrados: totalInteresesCobrados,
+        saldoCaja
       },
       grafica: graficaData
     });

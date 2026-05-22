@@ -5,6 +5,7 @@ import Resumen from './components/Resumen';
 import Prestamos from './components/Prestamos';
 import Abonos from './components/Abonos';
 import AdminUsuarios from './components/AdminUsuarios';
+import Caja from './components/Caja';
 import { Shield } from 'lucide-react';
 
 export default function App() {
@@ -64,6 +65,8 @@ export default function App() {
             setSelectedLoan={setSelectedLoan} 
           />
         );
+      case 'caja':
+        return <Caja />;
       case 'usuarios':
         return user.es_admin ? <AdminUsuarios /> : <Resumen />;
       default:
@@ -77,6 +80,7 @@ export default function App() {
       case 'resumen': return 'Dashboard';
       case 'prestamos': return 'Cartera de Préstamos';
       case 'abonos': return 'Procesamiento de Abonos';
+      case 'caja': return 'Control de Caja';
       case 'usuarios': return 'Administración de Usuarios';
       default: return 'Dashboard';
     }

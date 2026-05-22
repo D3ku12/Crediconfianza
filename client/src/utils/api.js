@@ -85,6 +85,15 @@ export const api = {
 
   // Resumen
   getResumen: () => request('/api/resumen'),
+
+  // Caja
+  getCajaSaldo: () => request('/api/caja/saldo'),
+  getCajaTransacciones: () => request('/api/caja/transacciones'),
+  createCajaTransaccion: (transaccion) =>
+    request('/api/caja/transacciones', {
+      method: 'POST',
+      body: JSON.stringify(transaccion),
+    }),
 };
 
 // Utilidad para formatear moneda COP

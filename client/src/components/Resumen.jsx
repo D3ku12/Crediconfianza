@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, formatCOP } from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert } from 'lucide-react';
+import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet } from 'lucide-react';
 
 export default function Resumen() {
   const [data, setData] = useState(null);
@@ -44,6 +44,12 @@ export default function Resumen() {
   const { resumen, grafica } = data || { resumen: {}, grafica: [] };
 
   const cards = [
+    {
+      title: 'Disponible en Caja',
+      value: formatCOP(resumen.saldoCaja || 0),
+      icon: Wallet,
+      className: 'positive',
+    },
     {
       title: 'Total Prestado',
       value: formatCOP(resumen.totalPrestado || 0),
