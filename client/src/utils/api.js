@@ -100,9 +100,13 @@ export const formatCOP = (valor) => {
 // Utilidad para formatear fechas de forma legible en español
 export const formatFecha = (fechaStr) => {
   if (!fechaStr) return '';
-  // Convertir YYYY-MM-DD a objeto Date sin problemas de zona horaria local
-  const [year, month, day] = fechaStr.split('-').map(Number);
+  // Asegurarnos de extraer solo YYYY-MM-DD ignorando la zona horaria (T...)
+  const datePart = fechaStr.split('T')[0];
+  const [year, month, day] = datePart.split('-').map(Number);
   const fecha = new Date(year, month - 1, day);
+  
+  if (isNaN(fecha.getTime())) return 'Fecha inválida';
+  
   return fecha.toLocaleDateString('es-CO', {
     year: 'numeric',
     month: 'short',
