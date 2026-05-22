@@ -6,13 +6,85 @@ const jwt = require('jsonwebtoken');
 const db = require('./db');
 const { authenticateToken, requireAdmin, JWT_SECRET } = require('./middleware/auth');
 
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// ==========================================
+// INICIALIZACIÓN AUTOMÁTICA DE BASE DE DATOS
+// ==========================================
+async function initializeDatabase() {
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        nombre_usuario VARCHAR(100) NOT NULL,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        es_admin BOOLEAN DEFAULT FALSE,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS prestamos (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+        deudor VARCHAR(150) NOT NULL,
+        capital_original NUMERIC(15,2) NOT NULL,
+        capital_pendiente NUMERIC(15,2) NOT NULL,
+        tasa_interes NUMERIC(5,2) NOT NULL DEFAULT 20.00,
+        fecha_inicio DATE NOT NULL,
+        activo BOOLEAN DEFAULT TRUE,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS abonos (
+        id SERIAL PRIMARY KEY,
+        prestamo_id INTEGER REFERENCES prestamos(id) ON DELETE CASCADE,
+        monto NUMERIC(15,2) NOT NULL,
+        tipo VARCHAR(10) CHECK (tipo IN ('interes','capital')),
+        fecha DATE NOT NULL,
+        nota TEXT,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Crear admin inicial si no existe
+    const adminName = process.env.ADMIN_NAME || 'JOHAN HUERTAS';
+    const adminUsername = process.env.ADMIN_USERNAME || 'stevenhm03@gmail.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Jh9@mN2sTy';
+
+    const userCheck = await client.query('SELECT id FROM usuarios WHERE username = $1', [adminUsername]);
+    if (userCheck.rows.length === 0) {
+      const hash = await bcrypt.hash(adminPassword, 10);
+      await client.query(
+        'INSERT INTO usuarios (nombre_usuario, username, password_hash, es_admin) VALUES ($1, $2, $3, $4)',
+        [adminName, adminUsername, hash, true]
+      );
+      console.log(`✅ Admin "${adminUsername}" creado automáticamente.`);
+    } else {
+      console.log(`ℹ️ Admin "${adminUsername}" ya existe.`);
+    }
+
+    await client.query('COMMIT');
+    console.log('✅ Base de datos inicializada correctamente.');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Error al inicializar la base de datos:', error);
+  } finally {
+    client.release();
+  }
+}
 
 // --- Lógica del Cálculo de Meses ---
 function calcularMesesTranscurridos(fechaInicioStr) {
@@ -416,6 +488,12 @@ app.get('*', (req, res) => {
 });
 
 
-app.listen(PORT, () => {
-  console.log(`Servidor Express corriendo de forma exitosa en el puerto ${PORT}`);
+// Inicializar BD y luego arrancar el servidor
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor Express corriendo en el puerto ${PORT}`);
+  });
+}).catch((err) => {
+  console.error('❌ Fallo crítico al inicializar:', err);
+  process.exit(1);
 });
