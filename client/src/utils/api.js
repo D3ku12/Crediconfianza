@@ -42,10 +42,10 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
     
-  register: (nombre_usuario, username, password, es_admin) =>
+  register: (nombre_usuario, username, password, es_admin, grupo_id) =>
     request('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ nombre_usuario, username, password, es_admin }),
+      body: JSON.stringify({ nombre_usuario, username, password, es_admin, grupo_id }),
     }),
 
   // Préstamos y Deudores
@@ -93,6 +93,26 @@ export const api = {
     request('/api/caja/transacciones', {
       method: 'POST',
       body: JSON.stringify(transaccion),
+    }),
+
+  // Grupos (admin)
+  getGrupos: () => request('/api/grupos'),
+  createGrupo: (nombre) =>
+    request('/api/grupos', {
+      method: 'POST',
+      body: JSON.stringify({ nombre }),
+    }),
+  deleteGrupo: (id) =>
+    request(`/api/grupos/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Usuarios (admin)
+  getUsuarios: () => request('/api/usuarios'),
+  updateUsuarioGrupo: (userId, grupoId) =>
+    request(`/api/usuarios/${userId}/grupo`, {
+      method: 'PUT',
+      body: JSON.stringify({ grupo_id: grupoId }),
     }),
 };
 

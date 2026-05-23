@@ -11,7 +11,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
 
   // Agregar menú de administración solo si el usuario es administrador
   if (user && user.es_admin) {
-    menuItems.push({ id: 'usuarios', label: 'Crear Usuarios', icon: Users });
+    menuItems.push({ id: 'usuarios', label: 'Administración', icon: Users });
   }
 
   return (
