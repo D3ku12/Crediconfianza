@@ -322,9 +322,11 @@ function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
   const totalMeses = 1 + mesesAdicionales;
   const interesAcumulado = interesMensual * totalMeses;
 
-  const label = mesesAdicionales === 0
+  const labelBase = mesesAdicionales === 0
     ? 'Interés inicial'
     : `Interés inicial + ${mesesAdicionales} mes${mesesAdicionales !== 1 ? 'es' : ''}`;
+  
+  const label = `${labelBase} (día ${dias})`;
 
   return { dias, interesAcumulado, interesMensual, interesDiario: interesMensual / 30, mesesAdicionales, totalMeses, label };
 }
