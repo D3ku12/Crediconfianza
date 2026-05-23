@@ -1249,11 +1249,14 @@ textarea.form-control {
     right: 20px;
     width: 56px;
     height: 56px;
+    min-width: 56px;
+    min-height: 56px;
     border-radius: 50%;
     padding: 0;
-    min-width: unset;
     z-index: 50;
-    box-shadow: 0 4px 16px rgba(30, 58, 95, 0.4);
+    box-shadow: var(--color-shadow-hover);
+    overflow: hidden;
+    flex-shrink: 0;
     animation: fadeSlideUp 0.3s ease-out;
   }
 

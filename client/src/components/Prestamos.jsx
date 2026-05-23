@@ -182,9 +182,9 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
           <Search size={18} className="search-icon" />
           <input type="text" className="form-control search-input" placeholder="Buscar deudor..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        <button className="btn btn-primary" onClick={handleOpenModal}>
-          <Plus size={18} />
-          Nuevo Préstamo
+        <button className="btn btn-primary" onClick={handleOpenModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }} title="Nuevo préstamo">
+          <Plus size={18} style={{ flexShrink: 0 }} />
+          <span>Nuevo Préstamo</span>
         </button>
       </div>
 
