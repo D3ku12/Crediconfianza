@@ -322,14 +322,34 @@ function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
   const totalMeses = 1 + mesesAdicionales;
   const interesAcumulado = interesMensual * totalMeses;
 
-  const labelBase = mesesAdicionales === 0
-    ? 'Interés inicial'
-    : `Interés inicial + ${mesesAdicionales} mes${mesesAdicionales !== 1 ? 'es' : ''}`;
-  
-  const label = `${labelBase} (día ${dias})`;
+  // Construir descripción natural del tiempo transcurrido
+  const mesesReales = Math.floor(dias / 30);
+  const diasRestantes = dias % 30;
+
+  let tiempoDescripcion = '';
+  if (dias === 0) {
+    tiempoDescripcion = 'hoy';
+  } else if (mesesReales === 0) {
+    tiempoDescripcion = `${dias} día${dias !== 1 ? 's' : ''}`;
+  } else if (diasRestantes === 0) {
+    tiempoDescripcion = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} exacto${mesesReales !== 1 ? 's' : ''}`;
+  } else {
+    tiempoDescripcion = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`;
+  }
+
+  // Construir label base con "tiempos" en vez de "meses"
+  let labelBase = '';
+  if (mesesAdicionales === 0) {
+    labelBase = 'Interés inicial';
+  } else {
+    labelBase = `Interés inicial + ${mesesAdicionales} tiempo${mesesAdicionales !== 1 ? 's' : ''}`;
+  }
+
+  const label = `${labelBase} (${tiempoDescripcion})`;
 
   return { dias, interesAcumulado, interesMensual, interesDiario: interesMensual / 30, mesesAdicionales, totalMeses, label };
 }
+
 
 
 
