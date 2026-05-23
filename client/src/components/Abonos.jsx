@@ -197,12 +197,19 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
               <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Tasa mensual:</span><span style={{ fontWeight: '500' }}>{selectedLoanData.tasa_interes}% mensual</span></div>
               <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Interés mensual:</span><span style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.interes_mensual)}</span></div>
               <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Fecha de Inicio:</span><span>{formatFecha(selectedLoanData.fecha_inicio)}</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Meses transcurridos:</span><span style={{ fontWeight: '500' }}>{selectedLoanData.meses_transcurridos} mes(es)</span></div>
+              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Tiempo transcurrido:</span><span style={{ fontWeight: '500', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{selectedLoanData.tiempo_label}</span></div>
               <div className="flex-row-between" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}><span style={{ color: 'var(--text-secondary)' }}>Interés Acumulado:</span><span style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.interes_acumulado)}</span></div>
               <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Abonado a Intereses:</span><span className="text-green" style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.total_abonado_interes)}</span></div>
-              <div className="flex-row-between" style={{ fontSize: '1.05rem', fontWeight: '700', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem' }}>
-                <span style={{ color: 'white' }}>Interés Pendiente:</span>
-                <span className={selectedLoanData.interes_pendiente > 0 ? 'text-red' : 'text-green'}>{formatCOP(selectedLoanData.interes_pendiente)}</span>
+              <div style={{ fontSize: '1.05rem', fontWeight: '700', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem' }}>
+                <div className="flex-row-between">
+                  <span style={{ color: 'white' }}>Interés Pendiente:</span>
+                  <span className={selectedLoanData.interes_pendiente > 0 ? 'text-red' : 'text-green'}>{formatCOP(selectedLoanData.interes_pendiente)}</span>
+                </div>
+                {selectedLoanData.tiempo_label && (
+                  <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: '2px 0 0', fontStyle: 'italic' }}>
+                    {selectedLoanData.tiempo_label}
+                  </p>
+                )}
               </div>
             </div>
             <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: 'var(--danger-bg)', borderRadius: '0.5rem', border: '1px solid var(--danger-border)', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -211,7 +218,9 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
             </div>
             {selectedLoanData.interes_pendiente > 0 && selectedLoanData.interes_mensual > 0 && (
               <div style={{ marginTop: '1rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.8rem', background: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-bg)' : 'rgba(245,158,11,0.1)', border: `1px solid ${selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-border)' : 'rgba(245,158,11,0.2)'}`, color: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger)' : 'var(--warning)' }}>
-                {selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? '⚠️ Este préstamo tiene más de 3 meses de intereses sin pagar' : `🕐 Tiene ${Math.floor(selectedLoanData.interes_pendiente / selectedLoanData.interes_mensual)} mes(es) de intereses pendientes`}
+                {selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3
+                  ? '⚠️ Este préstamo tiene más de 3 meses de intereses sin pagar'
+                  : `🕐 ${selectedLoanData.tiempo_label} — sin abonar`}
               </div>
             )}
           </div>

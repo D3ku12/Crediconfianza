@@ -297,29 +297,39 @@ async function getSharedUserIds(userId, client = db) {
   return [userId];
 }
 
-// --- Lógica del Cálculo de Meses ---
-function calcularMesesTranscurridos(fechaInicioStr) {
+// --- Lógica de Cálculo de Interés (Interés Inicial + Mensual con Día de Gracia) ---
+/**
+ * Calcula el interés acumulado de un préstamo.
+ * - Cobra 1 mes de interés inicial desde el día 0.
+ * - El día exacto de vencimiento (30, 60, 90...)
+ *   es día de gracia: no se cobra el mes siguiente.
+ * - Desde el día 31 en adelante se acumula 1 mes
+ *   adicional por cada 30 días cumplidos.
+ */
+function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
   const fechaInicio = new Date(fechaInicioStr);
   const hoy = new Date();
-  
-  // Evitar problemas de zonas horarias en la comparación de fechas nativas
-  const yStart = fechaInicio.getFullYear();
-  const mStart = fechaInicio.getMonth();
-  const dStart = fechaInicio.getDate();
-  
-  const yHoy = hoy.getFullYear();
-  const mHoy = hoy.getMonth();
-  const dHoy = hoy.getDate();
-  
-  let meses = (yHoy - yStart) * 12 + (mHoy - mStart);
-  
-  if (dHoy <= dStart) {
-    meses--; // Aún no pasa el día exacto de cobro de este mes (periodo de gracia en día de corte)
-  }
-  
-  // El primer mes se cobra de inmediato al adquirir el crédito, por tanto inicia en 1
-  return Math.max(1, meses + 1);
+
+  fechaInicio.setHours(0, 0, 0, 0);
+  hoy.setHours(0, 0, 0, 0);
+
+  const dias = Math.floor((hoy - fechaInicio) / (1000 * 60 * 60 * 24));
+  const capital = parseFloat(capitalPendiente);
+  const tasa = parseFloat(tasaMensual);
+  const interesMensual = capital * (tasa / 100);
+
+  const mesesAdicionales = dias <= 0 ? 0 : Math.floor((dias - 1) / 30);
+  const totalMeses = 1 + mesesAdicionales;
+  const interesAcumulado = interesMensual * totalMeses;
+
+  const label = mesesAdicionales === 0
+    ? 'Interés inicial'
+    : `Interés inicial + ${mesesAdicionales} mes${mesesAdicionales !== 1 ? 'es' : ''}`;
+
+  return { dias, interesAcumulado, interesMensual, interesDiario: interesMensual / 30, mesesAdicionales, totalMeses, label };
 }
+
+
 
 // ==========================================
 // RATE LIMITING GENERAL PARA TODAS LAS RUTAS /api/
@@ -552,20 +562,26 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
           .filter(a => a.tipo === 'capital')
           .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
-        const mesesTranscurridos = calcularMesesTranscurridos(loan.fecha_inicio);
-        const interesMensual = parseFloat(loan.capital_pendiente) * (parseFloat(loan.tasa_interes) / 100);
-        const interesAcumulado = mesesTranscurridos * interesMensual;
-        const interesPendiente = Math.max(0, interesAcumulado - totalAbonoInteres);
+        const calculo = calcularInteresTotal(
+          loan.capital_pendiente,
+          loan.tasa_interes,
+          loan.fecha_inicio
+        );
+        const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
         
         return {
           ...loan,
           capital_original: parseFloat(loan.capital_original),
           capital_pendiente: parseFloat(loan.capital_pendiente),
           tasa_interes: parseFloat(loan.tasa_interes),
-          meses_transcurridos: mesesTranscurridos,
-          interes_mensual: interesMensual,
-          interes_acumulado: interesAcumulado,
+          dias_transcurridos: calculo.dias,
+          meses_adicionales: calculo.mesesAdicionales,
+          total_meses_cobro: calculo.totalMeses,
+          interes_mensual: calculo.interesMensual,
+          interes_diario: calculo.interesDiario,
+          interes_acumulado: calculo.interesAcumulado,
           interes_pendiente: interesPendiente,
+          tiempo_label: calculo.label,
           total_abonado_interes: totalAbonoInteres,
           total_abonado_capital: totalAbonoCapital
         };
@@ -1122,10 +1138,12 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
           .filter(a => a.tipo === 'capital')
           .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
-        const mesesTranscurridos = calcularMesesTranscurridos(loan.fecha_inicio);
-        const interesMensual = parseFloat(loan.capital_pendiente) * (parseFloat(loan.tasa_interes) / 100);
-        const interesAcumulado = mesesTranscurridos * interesMensual;
-        const interesPendiente = Math.max(0, interesAcumulado - totalAbonoInteres);
+        const calculo = calcularInteresTotal(
+          loan.capital_pendiente,
+          loan.tasa_interes,
+          loan.fecha_inicio
+        );
+        const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
         
         const capOrig = parseFloat(loan.capital_original);
         const capPend = parseFloat(loan.capital_pendiente);
