@@ -347,7 +347,10 @@ function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
 
   const label = `${labelBase} (${tiempoDescripcion})`;
 
-  return { dias, interesAcumulado, interesMensual, interesDiario: interesMensual / 30, mesesAdicionales, totalMeses, label };
+  // Solo el tiempo sin "Interés inicial"
+  const tiempoTexto = tiempoDescripcion;
+
+  return { dias, interesAcumulado, interesMensual, interesDiario: interesMensual / 30, mesesAdicionales, totalMeses, label, tiempoTexto };
 }
 
 
@@ -604,6 +607,7 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
           interes_acumulado: calculo.interesAcumulado,
           interes_pendiente: interesPendiente,
           tiempo_label: calculo.label,
+          tiempo_texto: calculo.tiempoTexto,
           total_abonado_interes: totalAbonoInteres,
           total_abonado_capital: totalAbonoCapital
         };
