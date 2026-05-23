@@ -4,7 +4,7 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, ArrowUpRight, ArrowDownRight, RefreshCw, Pencil, X, Trash2, DollarSign } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, RefreshCw, Pencil, X, Trash2, DollarSign } from 'lucide-react';
 
 export default function Caja() {
   const toast = useToast();
@@ -234,25 +234,151 @@ export default function Caja() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {filteredTransacciones.map((t) => {
-                  const esPositivo = parseFloat(t.monto) > 0;
                   return (
-                    <div key={t.id} className="nav-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: '0.75rem', gap: '1rem', cursor: 'default' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: esPositivo ? 'var(--success-bg)' : 'var(--danger-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {esPositivo ? <ArrowDownRight className="text-green" size={16} /> : <ArrowUpRight className="text-red" size={16} />}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'white', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>{t.descripcion}</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{formatFecha(t.fecha)} · <span className={`text-${esPositivo ? 'green' : 'red'}`}>{getTipoLabel(t.tipo)}</span></span>
-                        </div>
+                    <div style={{
+                      background: 'var(--color-card)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      boxShadow: 'var(--color-shadow)',
+                      marginBottom: '10px',
+                      transition: 'box-shadow 0.2s ease',
+                    }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        minWidth: '40px',
+                        borderRadius: '50%',
+                        background: t.tipo === 'ingreso'
+                          ? 'rgba(34,197,94,0.15)'
+                          : t.tipo === 'egreso'
+                          ? 'rgba(239,68,68,0.15)'
+                          : 'var(--color-accent-soft)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                      }}>
+                        {t.tipo === 'ingreso' ? '↑'
+                         : t.tipo === 'egreso' ? '↓'
+                         : '⇄'}
                       </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: 'var(--color-text)',
+                          margin: 0,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {t.descripcion}
+                        </p>
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          marginTop: '3px',
+                          flexWrap: 'wrap',
+                        }}>
+                          <span style={{
+                            fontSize: '12px',
+                            color: 'var(--color-text-muted)',
+                          }}>
+                            {formatFecha(t.fecha)}
+                          </span>
+
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            padding: '2px 8px',
+                            borderRadius: '99px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            background: t.tipo === 'ingreso'
+                              ? 'rgba(34,197,94,0.15)'
+                              : t.tipo === 'egreso'
+                              ? 'rgba(239,68,68,0.15)'
+                              : 'var(--color-accent-soft)',
+                            color: t.tipo === 'ingreso'
+                              ? 'var(--color-success)'
+                              : t.tipo === 'egreso'
+                              ? 'var(--color-danger)'
+                              : 'var(--color-accent)',
+                          }}>
+                            {getTipoLabel(t.tipo)}
+                          </span>
+                        </div>
+
+                        <p style={{
+                          fontSize: '15px',
+                          fontWeight: '700',
+                          margin: '4px 0 0',
+                          color: t.monto >= 0
+                            ? 'var(--color-success)'
+                            : 'var(--color-danger)',
+                        }}>
+                          {t.monto >= 0 ? '+' : ''}
+                          {formatCOP(Math.abs(t.monto))}
+                        </p>
+                      </div>
+
                       {(t.tipo === 'ingreso' || t.tipo === 'egreso') && (
-                        <>
-                          <button onClick={() => handleOpenEdit(t)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '0.5rem', padding: '0.35rem 0.5rem', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minHeight: '44px', minWidth: '44px', transition: 'all 0.2s' }} title="Editar transacción" aria-label="Editar transacción"><Pencil size={14} /></button>
-                          <button onClick={() => handleDeleteTransaccion(t.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '0.5rem', padding: '0.35rem 0.5rem', cursor: 'pointer', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, minHeight: '44px', minWidth: '44px', transition: 'all 0.2s' }} title="Eliminar transacción" aria-label="Eliminar transacción"><Trash2 size={14} /></button>
-                        </>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                          flexShrink: 0,
+                        }}>
+                          <button
+                            onClick={() => handleOpenEdit(t)}
+                            style={{
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '8px',
+                              border: '1px solid var(--color-border)',
+                              background: 'var(--color-glass)',
+                              color: 'var(--color-text-soft)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '14px',
+                              transition: 'all 0.15s ease',
+                            }}
+                            title="Editar"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTransaccion(t.id)}
+                            style={{
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(239,68,68,0.3)',
+                              background: 'rgba(239,68,68,0.08)',
+                              color: 'var(--color-danger)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '14px',
+                              transition: 'all 0.15s ease',
+                            }}
+                            title="Eliminar"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       )}
-                      <span className={esPositivo ? 'text-green' : 'text-red'} style={{ fontWeight: '700', fontSize: '0.95rem', flexShrink: 0 }}>{esPositivo ? '+' : ''}{formatCOP(t.monto)}</span>
                     </div>
                   );
                 })}
