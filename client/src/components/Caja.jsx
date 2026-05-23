@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, formatCOP, formatFecha } from '../utils/api';
-import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, ArrowUpRight, ArrowDownRight, RefreshCw, Pencil, X } from 'lucide-react';
 
 export default function Caja() {
   const [saldo, setSaldo] = useState(0);
@@ -16,6 +16,12 @@ export default function Caja() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filtro, setFiltro] = useState('todos'); // 'todos', 'ingreso', 'egreso', 'prestamo', 'abono'
+  const [transaccionEditando, setTransaccionEditando] = useState(null);
+  const [editMonto, setEditMonto] = useState('');
+  const [editTipo, setEditTipo] = useState('ingreso');
+  const [editDescripcion, setEditDescripcion] = useState('');
+  const [editFecha, setEditFecha] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const fetchCajaData = async () => {
     try {
@@ -84,6 +90,53 @@ export default function Caja() {
       setError(err.message || 'Error al registrar la transacción.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (t) => {
+    setTransaccionEditando(t);
+    setEditMonto(Math.abs(parseFloat(t.monto)).toString());
+    setEditTipo(t.tipo);
+    setEditDescripcion(t.descripcion);
+    setEditFecha(t.fecha.split('T')[0]);
+    setError('');
+  };
+
+  const handleCloseEdit = () => {
+    setTransaccionEditando(null);
+    setEditMonto('');
+    setEditTipo('ingreso');
+    setEditDescripcion('');
+    setEditFecha('');
+    setError('');
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    const valorMonto = parseFloat(editMonto);
+    if (valorMonto <= 0) {
+      setError('El monto debe ser mayor a cero.');
+      return;
+    }
+    if (!editDescripcion || !editFecha) {
+      setError('Todos los campos son requeridos.');
+      return;
+    }
+    setEditSubmitting(true);
+    setError('');
+    try {
+      await api.updateCajaTransaccion(transaccionEditando.id, {
+        monto: valorMonto,
+        tipo: editTipo,
+        descripcion: editDescripcion,
+        fecha: editFecha,
+      });
+      handleCloseEdit();
+      fetchCajaData();
+    } catch (err) {
+      setError(err.message || 'Error al editar la transacción.');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -336,6 +389,29 @@ export default function Caja() {
                           </span>
                         </div>
                       </div>
+                      {(t.tipo === 'ingreso' || t.tipo === 'egreso') && (
+                        <button
+                          onClick={() => handleOpenEdit(t)}
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '0.5rem',
+                            padding: '0.35rem 0.5rem',
+                            cursor: 'pointer',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'white'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                          title="Editar transacción"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
                       <span className={esPositivo ? 'text-green' : 'text-red'} style={{ fontWeight: '700', fontSize: '0.95rem', flexShrink: 0 }}>
                         {esPositivo ? '+' : ''}{formatCOP(t.monto)}
                       </span>
@@ -348,6 +424,148 @@ export default function Caja() {
         </div>
 
       </div>
+
+      {transaccionEditando && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }} onClick={handleCloseEdit}>
+          <div className="card" style={{
+            maxWidth: '500px',
+            width: '100%',
+            padding: '2rem',
+            position: 'relative'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Editar Transacción</h3>
+              <button
+                onClick={handleCloseEdit}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  padding: '0.25rem',
+                  display: 'flex'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              <div className="form-group">
+                <label>Tipo de Operación *</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    className={`btn ${editTipo === 'ingreso' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setEditTipo('ingreso')}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                    disabled={editSubmitting}
+                  >
+                    <PlusCircle size={16} />
+                    Ingreso
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${editTipo === 'egreso' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setEditTipo('egreso')}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderColor: editTipo === 'egreso' ? 'var(--danger)' : '' }}
+                    disabled={editSubmitting}
+                  >
+                    <MinusCircle size={16} />
+                    Egreso
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-monto">Monto *</label>
+                <input
+                  id="edit-monto"
+                  type="number"
+                  min="1"
+                  step="any"
+                  className="form-control"
+                  placeholder="Monto en COP"
+                  value={editMonto}
+                  onChange={(e) => setEditMonto(e.target.value)}
+                  disabled={editSubmitting}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-fecha">Fecha *</label>
+                <div style={{ position: 'relative' }}>
+                  <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    id="edit-fecha"
+                    type="date"
+                    className="form-control"
+                    value={editFecha}
+                    onChange={(e) => setEditFecha(e.target.value)}
+                    style={{ paddingLeft: '2.25rem', width: '100%' }}
+                    disabled={editSubmitting}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-descr">Detalle o Descripción *</label>
+                <div style={{ position: 'relative' }}>
+                  <FileText size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.85rem', color: 'var(--text-muted)' }} />
+                  <textarea
+                    id="edit-descr"
+                    className="form-control"
+                    placeholder="Descripción de la transacción"
+                    value={editDescripcion}
+                    onChange={(e) => setEditDescripcion(e.target.value)}
+                    style={{ paddingLeft: '2.25rem', width: '100%', height: '80px', resize: 'none' }}
+                    disabled={editSubmitting}
+                    required
+                  />
+                </div>
+              </div>
+
+              {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                  onClick={handleCloseEdit}
+                  disabled={editSubmitting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ flex: 1, background: editTipo === 'egreso' ? 'var(--danger)' : '' }}
+                  disabled={editSubmitting}
+                >
+                  {editSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

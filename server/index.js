@@ -802,6 +802,68 @@ app.post('/api/caja/transacciones', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/caja/transacciones/:id -> Editar transacción manual (solo ingreso/egreso del usuario)
+app.put('/api/caja/transacciones/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { monto, tipo, descripcion, fecha } = req.body;
+
+  if (!monto || !tipo || !descripcion || !fecha) {
+    return res.status(400).json({ mensaje: 'Monto, tipo, descripción y fecha son requeridos.' });
+  }
+  if (tipo !== 'ingreso' && tipo !== 'egreso') {
+    return res.status(400).json({ mensaje: 'Solo se pueden editar transacciones de tipo ingreso o egreso.' });
+  }
+
+  const valorMonto = parseFloat(monto);
+  if (valorMonto <= 0) {
+    return res.status(400).json({ mensaje: 'El monto debe ser mayor a cero.' });
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const userIds = await getSharedUserIds(req.user.id, client);
+    const check = await client.query(
+      `SELECT * FROM transacciones_caja WHERE id = $1 AND usuario_id = ANY($2) AND tipo IN ('ingreso', 'egreso')`,
+      [id, userIds]
+    );
+
+    if (check.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ mensaje: 'Transacción no encontrada o no es editable. Solo se pueden editar ingresos y egresos manuales.' });
+    }
+
+    const montoReal = tipo === 'egreso' ? -valorMonto : valorMonto;
+
+    if (tipo === 'egreso') {
+      const montoActual = parseFloat(check.rows[0].monto);
+      const saldoRes = await client.query(
+        'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = ANY($1)',
+        [userIds]
+      );
+      const saldoSinEsta = parseFloat(saldoRes.rows[0].saldo) - montoActual;
+      if (saldoSinEsta < valorMonto) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ mensaje: `Saldo insuficiente. Disponible: $${saldoSinEsta.toLocaleString('es-CO')}` });
+      }
+    }
+
+    const result = await client.query(
+      `UPDATE transacciones_caja SET monto = $1, tipo = $2, descripcion = $3, fecha = $4 WHERE id = $5 RETURNING *`,
+      [montoReal, tipo, descripcion, fecha, id]
+    );
+
+    await client.query('COMMIT');
+    res.json(result.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al editar transacción de caja:', error);
+    res.status(500).json({ mensaje: 'Error al editar transacción de caja.' });
+  } finally {
+    client.release();
+  }
+});
 
 // ==========================================
 // RUTA DE RESUMEN METRICAS

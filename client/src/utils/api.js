@@ -94,6 +94,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(transaccion),
     }),
+  updateCajaTransaccion: (id, transaccion) =>
+    request(`/api/caja/transacciones/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(transaccion),
+    }),
 
   // Grupos (admin)
   getGrupos: () => request('/api/grupos'),
