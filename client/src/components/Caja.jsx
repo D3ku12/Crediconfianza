@@ -400,6 +400,7 @@ export default function Caja() {
                         </div>
                       </div>
                       {(t.tipo === 'ingreso' || t.tipo === 'egreso') && (
+                        <>
                         <button
                           onClick={() => handleOpenEdit(t)}
                           style={{
@@ -442,6 +443,7 @@ export default function Caja() {
                         >
                           <Trash2 size={14} />
                         </button>
+                        </>
                       )}
                       <span className={esPositivo ? 'text-green' : 'text-red'} style={{ fontWeight: '700', fontSize: '0.95rem', flexShrink: 0 }}>
                         {esPositivo ? '+' : ''}{formatCOP(t.monto)}
