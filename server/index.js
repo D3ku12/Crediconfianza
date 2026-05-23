@@ -865,6 +865,38 @@ app.put('/api/caja/transacciones/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE /api/caja/transacciones/:id -> Eliminar transacción manual (solo ingreso/egreso del usuario)
+app.delete('/api/caja/transacciones/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const client = await db.pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const userIds = await getSharedUserIds(req.user.id, client);
+    const check = await client.query(
+      `SELECT * FROM transacciones_caja WHERE id = $1 AND usuario_id = ANY($2) AND tipo IN ('ingreso', 'egreso')`,
+      [id, userIds]
+    );
+
+    if (check.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ mensaje: 'Transacción no encontrada o no se puede eliminar. Solo ingresos y egresos manuales.' });
+    }
+
+    await client.query('DELETE FROM transacciones_caja WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+    res.json({ mensaje: 'Transacción eliminada con éxito.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar transacción de caja:', error);
+    res.status(500).json({ mensaje: 'Error al eliminar transacción de caja.' });
+  } finally {
+    client.release();
+  }
+});
+
 // ==========================================
 // RUTA DE RESUMEN METRICAS
 // ==========================================

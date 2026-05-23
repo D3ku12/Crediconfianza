@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, formatCOP, formatFecha } from '../utils/api';
-import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, ArrowUpRight, ArrowDownRight, RefreshCw, Pencil, X } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, ArrowUpRight, ArrowDownRight, RefreshCw, Pencil, X, Trash2 } from 'lucide-react';
 
 export default function Caja() {
   const [saldo, setSaldo] = useState(0);
@@ -100,6 +100,16 @@ export default function Caja() {
     setEditDescripcion(t.descripcion);
     setEditFecha(t.fecha.split('T')[0]);
     setError('');
+  };
+
+  const handleDeleteTransaccion = async (id) => {
+    if (!window.confirm('¿Estás seguro de eliminar esta transacción? Esta acción no se puede deshacer.')) return;
+    try {
+      await api.deleteCajaTransaccion(id);
+      fetchCajaData();
+    } catch (err) {
+      setError(err.message || 'Error al eliminar la transacción.');
+    }
   };
 
   const handleCloseEdit = () => {
@@ -410,6 +420,27 @@ export default function Caja() {
                           title="Editar transacción"
                         >
                           <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTransaccion(t.id)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '0.5rem',
+                            padding: '0.35rem 0.5rem',
+                            cursor: 'pointer',
+                            color: '#ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                          title="Eliminar transacción"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       )}
                       <span className={esPositivo ? 'text-green' : 'text-red'} style={{ fontWeight: '700', fontSize: '0.95rem', flexShrink: 0 }}>

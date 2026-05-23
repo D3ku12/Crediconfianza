@@ -99,6 +99,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(transaccion),
     }),
+  deleteCajaTransaccion: (id) =>
+    request(`/api/caja/transacciones/${id}`, {
+      method: 'DELETE',
+    }),
 
   // Grupos (admin)
   getGrupos: () => request('/api/grupos'),
