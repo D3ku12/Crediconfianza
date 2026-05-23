@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api, formatCOP, formatFecha } from '../utils/api';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, AlertCircle, Edit, Trash2, BookOpen } from 'lucide-react';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [prestamos, setPrestamos] = useState([]);
@@ -56,6 +56,28 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
       setListaDeudores(deudores);
     } catch (err) {
       console.error('Error al cargar la lista de clientes', err);
+    }
+  };
+
+  const handleSelectContact = async () => {
+    const supported = ('contacts' in navigator && 'ContactsManager' in window);
+    if (!supported) {
+      alert('La selección de contactos no está soportada en este navegador o dispositivo.');
+      return;
+    }
+
+    try {
+      const props = ['name'];
+      const opts = { multiple: false };
+      const contacts = await navigator.contacts.select(props, opts);
+      if (contacts && contacts.length > 0) {
+        const contactName = contacts[0].name[0];
+        if (contactName) {
+          setDeudor(contactName);
+        }
+      }
+    } catch (err) {
+      console.error('Error al seleccionar contacto:', err);
     }
   };
 
@@ -436,26 +458,39 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
             <form onSubmit={handleCreatePrestamo}>
               <div className="form-group">
                 <label htmlFor="modal-deudor">Nombre del Deudor *</label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input
-                    id="modal-deudor"
-                    type="text"
-                    className="form-control"
-                    placeholder="Nombre completo"
-                    value={deudor}
-                    onChange={(e) => setDeudor(e.target.value)}
-                    style={{ paddingLeft: '2.25rem', width: '100%' }}
-                    disabled={creating}
-                    required
-                    list="deudores-list"
-                    autoComplete="off"
-                  />
-                  <datalist id="deudores-list">
-                    {listaDeudores.map((nombre, idx) => (
-                      <option key={idx} value={nombre} />
-                    ))}
-                  </datalist>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      id="modal-deudor"
+                      type="text"
+                      className="form-control"
+                      placeholder="Nombre completo"
+                      value={deudor}
+                      onChange={(e) => setDeudor(e.target.value)}
+                      style={{ paddingLeft: '2.25rem', width: '100%' }}
+                      disabled={creating}
+                      required
+                      list="deudores-list"
+                      autoComplete="off"
+                    />
+                    <datalist id="deudores-list">
+                      {listaDeudores.map((nombre, idx) => (
+                        <option key={idx} value={nombre} />
+                      ))}
+                    </datalist>
+                  </div>
+                  {('contacts' in navigator && 'ContactsManager' in window) && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleSelectContact}
+                      style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Seleccionar de Contactos"
+                    >
+                      <BookOpen size={18} style={{ color: 'var(--primary-color)' }} />
+                    </button>
+                  )}
                 </div>
               </div>
 
