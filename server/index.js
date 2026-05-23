@@ -143,8 +143,8 @@ function calcularMesesTranscurridos(fechaInicioStr) {
   
   let meses = (yHoy - yStart) * 12 + (mHoy - mStart);
   
-  if (dHoy < dStart) {
-    meses--; // Aún no llega al día exacto de cobro de este mes
+  if (dHoy <= dStart) {
+    meses--; // Aún no pasa el día exacto de cobro de este mes (periodo de gracia en día de corte)
   }
   
   // El primer mes se cobra de inmediato al adquirir el crédito, por tanto inicia en 1

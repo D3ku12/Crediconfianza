@@ -101,6 +101,57 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
 
   const selectedLoanData = prestamos.find(p => p.id.toString() === selectedLoanId);
 
+  const handlePagoTotal = async () => {
+    if (!selectedLoanData) return;
+    
+    const totalPagar = selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente;
+    
+    if (totalPagar <= 0) {
+      setError('Este préstamo ya no tiene saldo pendiente.');
+      return;
+    }
+
+    if (!window.confirm(`¿Estás seguro de liquidar este crédito?\n\nSe registrarán automáticamente los siguientes pagos con fecha ${fecha}:\n- Interés pendiente: ${formatCOP(selectedLoanData.interes_pendiente)}\n- Capital pendiente: ${formatCOP(selectedLoanData.capital_pendiente)}\n\nTotal a pagar: ${formatCOP(totalPagar)}`)) {
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      if (selectedLoanData.interes_pendiente > 0) {
+        await api.createAbono({
+          prestamo_id: parseInt(selectedLoanId),
+          monto: selectedLoanData.interes_pendiente,
+          tipo: 'interes',
+          fecha,
+          nota: nota || 'Pago total - Liquidación de intereses'
+        });
+      }
+      
+      if (selectedLoanData.capital_pendiente > 0) {
+        await api.createAbono({
+          prestamo_id: parseInt(selectedLoanId),
+          monto: selectedLoanData.capital_pendiente,
+          tipo: 'capital',
+          fecha,
+          nota: nota || 'Pago total - Liquidación de capital'
+        });
+      }
+      
+      setSuccess(`Pago total de ${formatCOP(totalPagar)} registrado con éxito. Crédito liquidado.`);
+      setMonto('');
+      setNota('');
+      
+      fetchLoans();
+    } catch (err) {
+      setError(err.message || 'Error al procesar el pago total.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
       <div className="abonos-grid" style={{ display: 'grid', gridTemplateColumns: selectedLoanData ? '1.2fr 1fr' : '1fr', gap: '2rem' }}>
@@ -226,14 +277,28 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="btn btn-primary w-full"
-              style={{ marginTop: '0.75rem' }}
-              disabled={submitting || !selectedLoanId}
-            >
-              {submitting ? 'Registrando...' : 'Registrar Abono'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                disabled={submitting || !selectedLoanId}
+              >
+                {submitting ? 'Registrando...' : 'Registrar Abono'}
+              </button>
+              
+              {selectedLoanData && (
+                <button 
+                  type="button" 
+                  className="btn btn-secondary"
+                  style={{ flex: 1, borderColor: 'var(--accent)', color: 'var(--accent)' }}
+                  disabled={submitting || !selectedLoanId}
+                  onClick={handlePagoTotal}
+                >
+                  Pago Total (Liquidar)
+                </button>
+              )}
+            </div>
           </form>
         </div>
 
