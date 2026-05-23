@@ -116,7 +116,7 @@ export default function Caja() {
       
       {/* Saldo en Caja Card */}
       <div className="card" style={{ 
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
         border: '1px solid var(--border-color-glow)',
         marginBottom: '2rem',
         padding: '1.5rem 2rem',
@@ -130,7 +130,7 @@ export default function Caja() {
           <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Dinero Disponible en Caja
           </span>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '0.25rem', color: 'white', textShadow: '0 0 20px rgba(99, 102, 241, 0.2)' }}>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '0.25rem', color: 'white', textShadow: '0 0 20px rgba(16, 185, 129, 0.2)' }}>
             {formatCOP(saldo)}
           </h2>
         </div>

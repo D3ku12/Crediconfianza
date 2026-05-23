@@ -161,8 +161,8 @@ export default function AdminUsuarios() {
               <div 
                 key={grupo.id} 
                 style={{ 
-                  background: 'rgba(99, 102, 241, 0.08)', 
-                  border: '1px solid rgba(99, 102, 241, 0.2)', 
+                  background: 'rgba(16, 185, 129, 0.08)', 
+                  border: '1px solid rgba(16, 185, 129, 0.2)', 
                   borderRadius: '0.75rem', 
                   padding: '0.85rem 1.1rem',
                   minWidth: '200px',

@@ -17,8 +17,8 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
   return (
     <aside className="sidebar">
       <div className="logo-container">
-        <span className="logo-icon">💸</span>
-        <span className="logo-text">EXPRESS</span>
+        <span className="logo-icon">🤝</span>
+        <span className="logo-text">CREDIALIADO</span>
       </div>
 
       <ul className="nav-menu">
@@ -53,7 +53,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
                 width: '32px', 
                 height: '32px', 
                 borderRadius: '50%', 
-                background: 'linear-gradient(135deg, var(--accent) 0%, #a5b4fc 100%)',
+                background: 'linear-gradient(135deg, var(--accent) 0%, #6ee7b7 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

@@ -33,9 +33,9 @@ export default function Login({ onLoginSuccess }) {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">💸</div>
-          <h2 className="login-title">PRESTAMOEXPRESS</h2>
-          <p className="login-subtitle">Gestión inteligente de préstamos con interés del 20%</p>
+          <div className="login-logo">🤝</div>
+          <h2 className="login-title">CREDIALIADO</h2>
+          <p className="login-subtitle">Tu aliado estratégico en gestión de préstamos</p>
         </div>
 
         {error && <div className="login-error">{error}</div>}

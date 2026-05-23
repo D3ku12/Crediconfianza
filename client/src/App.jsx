@@ -100,7 +100,7 @@ export default function App() {
           <div>
             <h1>{getTabTitle()}</h1>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-              PRESTAMOEXPRESS — Moneda: COP ($)
+              CREDIALIADO — Moneda: COP ($)
             </p>
           </div>
           
