@@ -12,6 +12,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
   
   const [loadingLoans, setLoadingLoans] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -101,7 +102,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
 
   const selectedLoanData = prestamos.find(p => p.id.toString() === selectedLoanId);
 
-  const handlePagoTotal = async () => {
+  const handlePagoTotalClick = () => {
     if (!selectedLoanData) return;
     
     const totalPagar = selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente;
@@ -111,13 +112,16 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
       return;
     }
 
-    if (!window.confirm(`¿Estás seguro de liquidar este crédito?\n\nSe registrarán automáticamente los siguientes pagos con fecha ${fecha}:\n- Interés pendiente: ${formatCOP(selectedLoanData.interes_pendiente)}\n- Capital pendiente: ${formatCOP(selectedLoanData.capital_pendiente)}\n\nTotal a pagar: ${formatCOP(totalPagar)}`)) {
-      return;
-    }
+    setShowConfirmModal(true);
+  };
 
+  const confirmPagoTotal = async () => {
+    setShowConfirmModal(false);
     setSubmitting(true);
     setError('');
     setSuccess('');
+
+    const totalPagar = selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente;
 
     try {
       if (selectedLoanData.interes_pendiente > 0) {
@@ -293,7 +297,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
                   className="btn btn-secondary"
                   style={{ flex: 1, borderColor: 'var(--accent)', color: 'var(--accent)' }}
                   disabled={submitting || !selectedLoanId}
-                  onClick={handlePagoTotal}
+                  onClick={handlePagoTotalClick}
                 >
                   Pago Total (Liquidar)
                 </button>
@@ -368,6 +372,34 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
         )}
 
       </div>
+
+      {/* Modal de Confirmación de Pago Total */}
+      {showConfirmModal && selectedLoanData && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <button className="modal-close" onClick={() => setShowConfirmModal(false)}>&times;</button>
+            <h2 className="modal-title">Confirmar Liquidación</h2>
+            <div style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+              <p>¿Estás seguro de liquidar este crédito? Se registrarán automáticamente los siguientes pagos con fecha <strong>{formatFecha(fecha)}</strong>:</p>
+              <ul style={{ margin: '1rem 0 1rem 1.5rem', color: 'var(--text-primary)' }}>
+                <li>Interés pendiente: <strong className={selectedLoanData.interes_pendiente > 0 ? "text-red" : "text-green"}>{formatCOP(selectedLoanData.interes_pendiente)}</strong></li>
+                <li>Capital pendiente: <strong className={selectedLoanData.capital_pendiente > 0 ? "text-red" : "text-green"}>{formatCOP(selectedLoanData.capital_pendiente)}</strong></li>
+              </ul>
+              <div style={{ padding: '1rem', background: 'var(--bg-main)', borderRadius: '0.5rem', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Total a pagar:</span>
+                <span className="text-green" style={{ fontSize: '1.25rem', fontWeight: '800' }}>
+                  {formatCOP(selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente)}
+                </span>
+              </div>
+            </div>
+            
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={confirmPagoTotal}>Confirmar Pago</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
