@@ -10,9 +10,11 @@
   --color-primary: #1e3a5f;
   --color-bg: #f0f4f8;
   --color-card: #ffffff;
+  --color-text: #1e293b;
+  --color-text-soft: #64748b;
 
   /* Colores primarios — Azul oscuro corporativo */
-  --primary: #1e3a5f;
+  --primary: var(--color-primary);
   --primary-hover: #2d5a8e;
   --primary-light: #eef2f7;
   --primary-dark: #0f2440;
@@ -36,13 +38,13 @@
   --warning-border: #fde68a;
 
   /* Neutros */
-  --bg-main: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-sidebar: #1e3a5f;
-  --bg-input: #f8fafc;
+  --bg-main: var(--color-bg);
+  --bg-card: var(--color-card);
+  --bg-sidebar: var(--color-primary);
+  --bg-input: var(--color-card);
 
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-soft);
   --text-muted: #94a3b8;
   --text-inverse: #ffffff;
 
@@ -85,6 +87,11 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   line-height: 1.5;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Selection */

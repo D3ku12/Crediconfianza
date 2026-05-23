@@ -5,6 +5,7 @@ import { ToastProvider } from './components/Toast';
 import { Shield, Bell } from 'lucide-react';
 import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
+import { useTema } from './hooks/useTema';
 
 const Resumen = lazy(() => import('./components/Resumen'));
 const Prestamos = lazy(() => import('./components/Prestamos'));
@@ -19,6 +20,7 @@ const suspenseFallback = (
 );
 
 export default function App() {
+  useTema();
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('resumen');
@@ -151,22 +153,22 @@ export default function App() {
             {verNotifs && (
               <div style={{
                 position: 'absolute', top: '60px', right: '16px',
-                background: '#fff', borderRadius: '12px',
+                background: 'var(--color-card)', borderRadius: '12px',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
                 width: '300px', zIndex: 1000, overflow: 'hidden'
               }}>
-                <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
                   <strong style={{ fontSize: '14px' }}>Notificaciones</strong>
                 </div>
                 {notificaciones.length === 0 ? (
-                  <p style={{ padding: '16px', color: '#64748b', fontSize: '14px' }}>
+                  <p style={{ padding: '16px', color: 'var(--color-text-soft)', fontSize: '14px' }}>
                     ✅ Todo al día, sin alertas pendientes
                   </p>
                 ) : (
                   notificaciones.map(n => (
                     <div key={n.id} style={{
-                      padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
-                      fontSize: '13px', color: '#1e293b'
+                      padding: '12px 16px', borderBottom: '1px solid var(--border-light)',
+                      fontSize: '13px', color: 'var(--color-text)'
                     }}>
                       {n.mensaje}
                     </div>

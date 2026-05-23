@@ -8,16 +8,16 @@ export const EstadoVacio = memo(function EstadoVacio({ icono, titulo, descripcio
     }}>
       <div style={{ fontSize: '48px', marginBottom: '16px' }}>{icono}</div>
       <h3 style={{ fontSize: '18px', fontWeight: '600',
-                   color: '#1e293b', marginBottom: '8px' }}>
+                   color: 'var(--color-text)', marginBottom: '8px' }}>
         {titulo}
       </h3>
-      <p style={{ fontSize: '14px', color: '#64748b',
+      <p style={{ fontSize: '14px', color: 'var(--color-text-soft)',
                   marginBottom: '24px', maxWidth: '260px' }}>
         {descripcion}
       </p>
       {accion && (
         <button onClick={accion} style={{
-          background: '#1e3a5f', color: '#fff', border: 'none',
+          background: 'var(--color-primary)', color: '#fff', border: 'none',
           padding: '12px 24px', borderRadius: '10px',
           fontSize: '14px', fontWeight: '600', cursor: 'pointer'
         }}>

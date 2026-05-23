@@ -9,18 +9,18 @@ export const ModalConfirm = memo(function ModalConfirm({ mensaje, onConfirmar, o
       justifyContent: 'center', padding: '24px'
     }}>
       <div style={{
-        background: '#fff', borderRadius: '16px', padding: '28px',
+        background: 'var(--color-card)', borderRadius: '16px', padding: '28px',
         maxWidth: '340px', width: '100%', textAlign: 'center',
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
       }}>
         <p style={{ fontSize: '16px', marginBottom: '24px',
-                    color: '#1e293b', lineHeight: '1.5' }}>
+                    color: 'var(--color-text)', lineHeight: '1.5' }}>
           {mensaje}
         </p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <button onClick={onCancelar} style={{
             padding: '10px 24px', borderRadius: '8px',
-            border: '1px solid #e2e8f0', background: '#f8fafc',
+            border: '1px solid var(--border-color)', background: 'var(--color-bg)',
             cursor: 'pointer', fontSize: '14px', fontWeight: '500'
           }}>
             Cancelar
