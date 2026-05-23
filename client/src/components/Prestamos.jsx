@@ -209,6 +209,10 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     </span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
+                    <div style={{ gridColumn: '1 / -1', paddingBottom: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.25rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Fecha de Inicio: </span>
+                      <span style={{ fontWeight: '600' }}>{formatFecha(loan.fecha_inicio)}</span>
+                    </div>
                     <div>
                       <span style={{ color: 'var(--text-muted)', display: 'block' }}>Capital</span>
                       <span style={{ fontWeight: '600' }}>{formatCOP(loan.capital_original)}</span>
