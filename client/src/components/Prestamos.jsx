@@ -224,8 +224,8 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     </div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Capital</span><span style={{ fontWeight: '600' }}>{formatCOP(loan.capital_original)}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Pendiente</span><span className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.capital_pendiente)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Meses</span><span style={{ fontWeight: '500' }}>{loan.tasa_interes}% · {loan.meses_transcurridos}m</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span><span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', fontStyle: 'italic', marginTop: '2px' }}>{loan.tiempo_label}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Tiempo</span><span style={{ fontWeight: '500' }}>{loan.tasa_interes}% · {loan.tiempo_label}</span></div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                     {isActivo && <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1, minHeight: '44px' }}><Receipt size={14} /> Abonar</button>}
@@ -272,7 +272,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                       <th>Capital Pendiente</th>
                       <th>Tasa</th>
                       <th>Fecha Inicio</th>
-                      <th>Meses</th>
+                      <th>Tiempo</th>
                       <th>Int. Pendiente</th>
                       <th>Estado</th>
                       <th>Acciones</th>
@@ -296,7 +296,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                             <td className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.capital_pendiente)}</td>
                             <td>{loan.tasa_interes}%</td>
                             <td>{formatFecha(loan.fecha_inicio)}</td>
-                            <td>{loan.meses_transcurridos}</td>
+                            <td style={{ fontSize: '12px', fontStyle: 'italic' }}>{loan.tiempo_label}</td>
                             <td className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_pendiente)}</td>
                             <td><span className={`badge ${isActivo ? 'danger' : 'success'}`}>{isActivo ? 'Activo' : 'Pagado'}</span></td>
                             <td>
