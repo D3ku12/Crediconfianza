@@ -29,6 +29,12 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
               <div
                 className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(item.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setActiveTab(item.id)}
+                aria-label={`Ir a ${item.label}`}
+                aria-current={activeTab === item.id ? 'page' : undefined}
+                style={{ minHeight: '44px', cursor: 'pointer' }}
               >
                 <Icon className="nav-icon" size={20} />
                 <span>{item.label}</span>
@@ -38,7 +44,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
         })}
         
         <li>
-          <div className="nav-item logout-btn" onClick={onLogout} style={{ marginTop: '2rem' }}>
+          <div className="nav-item logout-btn" onClick={onLogout} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onLogout()} aria-label="Cerrar sesión" style={{ marginTop: '2rem', minHeight: '44px', cursor: 'pointer' }}>
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
           </div>

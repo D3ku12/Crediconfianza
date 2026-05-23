@@ -8,11 +8,181 @@ const { authenticateToken, requireAdmin, JWT_SECRET } = require('./middleware/au
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+// ==========================================
+// VALIDACIÓN DE VARIABLES DE ENTORNO AL ARRANQUE
+// ==========================================
+const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL', 'CLIENT_URL'];
+for (const v of requiredEnvVars) {
+  if (!process.env[v]) {
+    console.error(`ERROR CRÍTICO: Variable de entorno ${v} no definida.`);
+    process.exit(1);
+  }
+}
+if (process.env.JWT_SECRET.length < 32) {
+  console.error('ERROR CRÍTICO: JWT_SECRET debe tener al menos 32 caracteres.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// ==========================================
+// CABECERAS DE SEGURIDAD HTTP (reemplazo manual de helmet)
+// ==========================================
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
+
+// ==========================================
+// CORS RESTRICTIVO
+// ==========================================
+const corsOptions = {
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// ==========================================
+// COMPRESIÓN GZIP MANUAL (sin dependencias externas)
+// ==========================================
+const zlib = require('zlib');
+
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  if (!acceptEncoding.includes('gzip')) return next();
+
+  const originalJson = res.json.bind(res);
+  res.json = function(data) {
+    const json = JSON.stringify(data);
+    if (json.length < 1024) return originalJson(data);
+
+    res.setHeader('Content-Encoding', 'gzip');
+    res.setHeader('Content-Type', 'application/json');
+    zlib.gzip(json, (err, compressed) => {
+      if (err) return originalJson(data);
+      res.end(compressed);
+    });
+  };
+  next();
+});
+
+// ==========================================
+// CACHÉ EN MEMORIA PARA RESPUESTAS COSTOSAS
+// ==========================================
+const cache = new Map();
+
+function cacheMiddleware(segundos) {
+  return (req, res, next) => {
+    const key = `${req.user?.id}_${req.path}`;
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.timestamp < segundos * 1000) {
+      return res.json(cached.data);
+    }
+    const originalJson = res.json.bind(res);
+    res.json = function(data) {
+      cache.set(key, { data, timestamp: Date.now() });
+      return originalJson(data);
+    };
+    next();
+  };
+}
+
+function invalidateCache(req, res, next) {
+  cache.clear();
+  next();
+}
+
+// ==========================================
+// RATE LIMITING MANUAL (sin express-rate-limit)
+// ==========================================
+const rateLimitStore = new Map();
+
+function rateLimit({ windowMs, max, message }) {
+  return (req, res, next) => {
+    const key = req.ip;
+    const now = Date.now();
+    let record = rateLimitStore.get(key);
+
+    if (!record || now - record.start > windowMs) {
+      record = { count: 1, start: now };
+      rateLimitStore.set(key, record);
+    } else {
+      record.count++;
+    }
+
+    if (record.count > max) {
+      return res.status(429).json({ mensaje: message });
+    }
+    next();
+  };
+}
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Demasiados intentos de inicio de sesión. Intente nuevamente en 15 minutos.'
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: 'Demasiadas solicitudes. Intente nuevamente más tarde.'
+});
+
+// ==========================================
+// FUNCIÓN DE VALIDACIÓN MANUAL (sin express-validator)
+// ==========================================
+function validar(campos) {
+  return (req, res, next) => {
+    const errores = [];
+    for (const [campo, reglas] of Object.entries(campos)) {
+      const valor = req.body[campo];
+      if (reglas.requerido && (valor === undefined || valor === null || String(valor).trim() === '')) {
+        errores.push({ campo, mensaje: `El campo "${campo}" es requerido.` });
+        continue;
+      }
+      if (valor === undefined || valor === null) continue;
+      if (reglas.tipo === 'numero') {
+        const n = parseFloat(valor);
+        if (isNaN(n) || n <= 0) {
+          errores.push({ campo, mensaje: `El campo "${campo}" debe ser un número positivo.` });
+        } else if (reglas.max !== undefined && n > reglas.max) {
+          errores.push({ campo, mensaje: `El campo "${campo}" no puede superar ${reglas.max}.` });
+        } else if (reglas.min !== undefined && n < reglas.min) {
+          errores.push({ campo, mensaje: `El campo "${campo}" no puede ser menor a ${reglas.min}.` });
+        }
+      }
+      if (reglas.tipo === 'string') {
+        const str = String(valor).trim();
+        if (reglas.maxLength && str.length > reglas.maxLength) {
+          errores.push({ campo, mensaje: `El campo "${campo}" no puede superar ${reglas.maxLength} caracteres.` });
+        }
+      }
+      if (reglas.enum && !reglas.enum.includes(valor)) {
+        errores.push({ campo, mensaje: `El campo "${campo}" debe ser uno de: ${reglas.enum.join(', ')}.` });
+      }
+      if (reglas.tipo === 'fecha') {
+        const d = new Date(valor);
+        if (isNaN(d.getTime())) {
+          errores.push({ campo, mensaje: `El campo "${campo}" debe ser una fecha válida.` });
+        }
+      }
+    }
+    if (errores.length > 0) {
+      return res.status(400).json({ errores });
+    }
+    next();
+  };
+}
 
 // ==========================================
 // INICIALIZACIÓN AUTOMÁTICA DE BASE DE DATOS
@@ -152,16 +322,20 @@ function calcularMesesTranscurridos(fechaInicioStr) {
 }
 
 // ==========================================
+// RATE LIMITING GENERAL PARA TODAS LAS RUTAS /api/
+// ==========================================
+app.use('/api/', apiLimiter);
+
+// ==========================================
 // RUTAS DE AUTENTICACIÓN
 // ==========================================
 
-// POST /api/auth/login -> Login de usuario
-app.post('/api/auth/login', async (req, res) => {
+// POST /api/auth/login -> Login de usuario (con rate limiting y validación)
+app.post('/api/auth/login', loginLimiter, validar({
+  username: { requerido: true, tipo: 'string', maxLength: 100 },
+  password: { requerido: true, tipo: 'string', maxLength: 100 }
+}), async (req, res) => {
   const { username, password } = req.body;
-  
-  if (!username || !password) {
-    return res.status(400).json({ mensaje: 'Por favor, ingrese usuario y contraseña.' });
-  }
 
   try {
     const result = await db.query('SELECT * FROM usuarios WHERE username = $1', [username]);
@@ -405,13 +579,14 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/prestamos -> Crear préstamo
-app.post('/api/prestamos', authenticateToken, async (req, res) => {
+// POST /api/prestamos -> Crear préstamo (con validación)
+app.post('/api/prestamos', apiLimiter, authenticateToken, invalidateCache, validar({
+  deudor: { requerido: true, tipo: 'string', maxLength: 150 },
+  capital_original: { requerido: true, tipo: 'numero' },
+  tasa_interes: { requerido: false, tipo: 'numero', max: 100, min: 0 },
+  fecha_inicio: { requerido: true, tipo: 'fecha' }
+}), async (req, res) => {
   const { deudor, capital_original, tasa_interes, fecha_inicio } = req.body;
-  
-  if (!deudor || !capital_original || !fecha_inicio) {
-    return res.status(400).json({ mensaje: 'Nombre del deudor, capital original y fecha de inicio son requeridos.' });
-  }
 
   const tasa = tasa_interes !== undefined ? parseFloat(tasa_interes) : 20.00;
   const montoPrestamo = parseFloat(capital_original);
@@ -463,7 +638,7 @@ app.post('/api/prestamos', authenticateToken, async (req, res) => {
 
 
 // PUT /api/prestamos/:id -> Editar préstamo
-app.put('/api/prestamos/:id', authenticateToken, async (req, res) => {
+app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, res) => {
   const { id } = req.params;
   const { deudor, capital_original, tasa_interes, fecha_inicio } = req.body;
   
@@ -530,7 +705,7 @@ app.put('/api/prestamos/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/prestamos/:id -> Eliminar préstamo
-app.delete('/api/prestamos/:id', authenticateToken, async (req, res) => {
+app.delete('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, res) => {
   const { id } = req.params;
   try {
     const userIds = await getSharedUserIds(req.user.id);
@@ -550,7 +725,7 @@ app.delete('/api/prestamos/:id', authenticateToken, async (req, res) => {
 // ==========================================
 
 // POST /api/abonos -> Registrar abono (interés o capital)
-app.post('/api/abonos', authenticateToken, async (req, res) => {
+app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => {
   const { prestamo_id, monto, tipo, fecha, nota } = req.body;
   
   if (!prestamo_id || !monto || !tipo || !fecha) {
@@ -675,7 +850,7 @@ app.get('/api/prestamos/:id/abonos', authenticateToken, async (req, res) => {
 
 
 // DELETE /api/abonos/:id -> Eliminar abono
-app.delete('/api/abonos/:id', authenticateToken, async (req, res) => {
+app.delete('/api/abonos/:id', authenticateToken, invalidateCache, async (req, res) => {
   const { id } = req.params;
   const client = await db.pool.connect();
   
@@ -753,13 +928,14 @@ app.get('/api/caja/transacciones', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/caja/transacciones -> Registrar transacción manual (aporte o egreso)
-app.post('/api/caja/transacciones', authenticateToken, async (req, res) => {
+// POST /api/caja/transacciones -> Registrar transacción manual (aporte o egreso, con validación)
+app.post('/api/caja/transacciones', apiLimiter, authenticateToken, invalidateCache, validar({
+  monto: { requerido: true, tipo: 'numero' },
+  tipo: { requerido: true, enum: ['ingreso', 'egreso'] },
+  descripcion: { requerido: true, tipo: 'string', maxLength: 300 },
+  fecha: { requerido: true, tipo: 'fecha' }
+}), async (req, res) => {
   const { monto, tipo, descripcion, fecha } = req.body;
-  
-  if (!monto || !tipo || !descripcion || !fecha) {
-    return res.status(400).json({ mensaje: 'Monto, tipo (ingreso/egreso), descripción y fecha son requeridos.' });
-  }
 
   if (tipo !== 'ingreso' && tipo !== 'egreso') {
     return res.status(400).json({ mensaje: 'El tipo debe ser "ingreso" o "egreso".' });
@@ -802,14 +978,16 @@ app.post('/api/caja/transacciones', authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/caja/transacciones/:id -> Editar transacción manual (solo ingreso/egreso del usuario)
-app.put('/api/caja/transacciones/:id', authenticateToken, async (req, res) => {
+// PUT /api/caja/transacciones/:id -> Editar transacción manual (con validación)
+app.put('/api/caja/transacciones/:id', apiLimiter, authenticateToken, invalidateCache, validar({
+  monto: { requerido: true, tipo: 'numero' },
+  tipo: { requerido: true, enum: ['ingreso', 'egreso'] },
+  descripcion: { requerido: true, tipo: 'string', maxLength: 300 },
+  fecha: { requerido: true, tipo: 'fecha' }
+}), async (req, res) => {
   const { id } = req.params;
   const { monto, tipo, descripcion, fecha } = req.body;
-
-  if (!monto || !tipo || !descripcion || !fecha) {
-    return res.status(400).json({ mensaje: 'Monto, tipo, descripción y fecha son requeridos.' });
-  }
+  
   if (tipo !== 'ingreso' && tipo !== 'egreso') {
     return res.status(400).json({ mensaje: 'Solo se pueden editar transacciones de tipo ingreso o egreso.' });
   }
@@ -866,7 +1044,7 @@ app.put('/api/caja/transacciones/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/caja/transacciones/:id -> Eliminar transacción manual (solo ingreso/egreso del usuario)
-app.delete('/api/caja/transacciones/:id', authenticateToken, async (req, res) => {
+app.delete('/api/caja/transacciones/:id', authenticateToken, invalidateCache, async (req, res) => {
   const { id } = req.params;
   const client = await db.pool.connect();
 
@@ -902,7 +1080,7 @@ app.delete('/api/caja/transacciones/:id', authenticateToken, async (req, res) =>
 // ==========================================
 
 // GET /api/resumen -> Totales generales y datos de gráfica para el dashboard
-app.get('/api/resumen', authenticateToken, async (req, res) => {
+app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res) => {
   try {
     // 0. Obtener IDs compartidos y saldo de caja del grupo
     const userIds = await getSharedUserIds(req.user.id);
@@ -1012,6 +1190,26 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
+
+// ==========================================
+// MANEJO GLOBAL DE ERRORES NO CAPTURADOS
+// ==========================================
+app.use((err, req, res, next) => {
+  console.error('Error no capturado:', err);
+  res.status(500).json({ mensaje: 'Error interno del servidor.' });
+});
+
+// ==========================================
+// MANEJO DE EXCEPCIONES NO CAPTURADAS (process)
+// ==========================================
+process.on('unhandledRejection', (reason) => {
+  console.error('Excepción no manejada (unhandledRejection):', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Excepción no capturada (uncaughtException):', err.message);
+  process.exit(1);
+});
 
 // Inicializar BD y luego arrancar el servidor
 initializeDatabase().then(() => {

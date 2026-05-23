@@ -1,19 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
-import Resumen from './components/Resumen';
-import Prestamos from './components/Prestamos';
-import Abonos from './components/Abonos';
-import AdminUsuarios from './components/AdminUsuarios';
-import Caja from './components/Caja';
-import { Shield } from 'lucide-react';
+import { ToastProvider } from './components/Toast';
+import { Shield, Bell } from 'lucide-react';
+
+const Resumen = lazy(() => import('./components/Resumen'));
+const Prestamos = lazy(() => import('./components/Prestamos'));
+const Abonos = lazy(() => import('./components/Abonos'));
+const AdminUsuarios = lazy(() => import('./components/AdminUsuarios'));
+const Caja = lazy(() => import('./components/Caja'));
+
+const suspenseFallback = (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', fontSize: '14px', color: '#64748b' }}>
+    Cargando...
+  </div>
+);
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('resumen');
   
-  // Compartir préstamo seleccionado al presionar "Abonar" rápido
   const [selectedLoan, setSelectedLoan] = useState(null);
 
   useEffect(() => {
@@ -27,20 +34,20 @@ export default function App() {
     }
   }, [token]);
 
-  const handleLoginSuccess = (newToken, loggedUser) => {
+  const handleLoginSuccess = useCallback((newToken, loggedUser) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(loggedUser));
     setToken(newToken);
     setUser(loggedUser);
     setActiveTab('resumen');
-  };
+  }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken('');
     setUser(null);
-  };
+  }, []);
 
   if (!token || !user) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
@@ -87,6 +94,7 @@ export default function App() {
   };
 
   return (
+    <ToastProvider>
     <div className="app-container">
       <Sidebar 
         activeTab={activeTab} 
@@ -104,37 +112,46 @@ export default function App() {
             </p>
           </div>
           
-          <div className="user-badge">
-            <span style={{ color: 'var(--text-secondary)' }}>Hola,</span>
-            <span style={{ fontWeight: '600', color: 'white' }}>{user.nombre_usuario}</span>
-            {user.es_admin && (
-              <span 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.2rem',
-                  fontSize: '0.7rem', 
-                  color: 'var(--warning)', 
-                  background: 'var(--warning-bg)', 
-                  padding: '0.15rem 0.5rem', 
-                  borderRadius: '99px',
-                  border: '1px solid rgba(245,158,11,0.2)'
-                }}
-              >
-                <Shield size={10} />
-                Admin
-              </span>
-            )}
-            <div className="avatar">
-              {user.nombre_usuario.charAt(0).toUpperCase()}
+          <div className="header-actions">
+            <button className="notification-btn" aria-label="Notificaciones">
+              <Bell size={20} />
+              <span className="notification-dot"></span>
+            </button>
+            <div className="user-badge">
+              <span style={{ color: 'var(--text-secondary)' }}>Hola,</span>
+              <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{user.nombre_usuario}</span>
+              {user.es_admin && (
+                <span 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.2rem',
+                    fontSize: '0.7rem', 
+                    color: 'var(--warning-text)', 
+                    background: 'var(--warning-bg)', 
+                    padding: '0.15rem 0.5rem', 
+                    borderRadius: '99px',
+                    border: '1px solid var(--warning-border)'
+                  }}
+                >
+                  <Shield size={10} />
+                  Admin
+                </span>
+              )}
+              <div className="avatar">
+                {user.nombre_usuario.charAt(0).toUpperCase()}
+              </div>
             </div>
           </div>
         </header>
 
         <section style={{ flex: 1 }}>
-          {renderTabContent()}
+          <Suspense fallback={suspenseFallback}>
+            {renderTabContent()}
+          </Suspense>
         </section>
       </main>
     </div>
+    </ToastProvider>
   );
 }
