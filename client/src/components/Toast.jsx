@@ -6,8 +6,8 @@ const ToastContext = createContext(null);
 const ToastItem = memo(function ToastItem({ toast }) {
   return (
     <div style={{
-      background: toast.tipo === 'error' ? '#ef4444'
-                : toast.tipo === 'exito' ? '#22c55e' : 'var(--color-primary)',
+      background: toast.tipo === 'error' ? 'var(--color-danger)'
+                : toast.tipo === 'exito' ? 'var(--color-success)' : 'var(--color-primary)',
       color: '#fff', padding: '12px 24px',
       borderRadius: '12px', fontSize: '14px',
       fontWeight: '500', boxShadow: '0 4px 16px rgba(0,0,0,0.2)',

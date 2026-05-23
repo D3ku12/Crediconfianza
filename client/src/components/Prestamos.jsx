@@ -212,7 +212,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
               const isActivo = parseFloat(loan.capital_pendiente) > 0;
               const isHighlighted = highlightedId === loan.id;
               return (
-                <div key={loan.id} className="card loan-card" style={isHighlighted ? { borderColor: '#22c55e', boxShadow: '0 0 0 2px rgba(34,197,94,0.3)', transition: 'all 0.3s ease' } : {}}>
+                <div key={loan.id} className="card loan-card" style={isHighlighted ? { borderColor: 'var(--color-success)', boxShadow: '0 0 0 2px color-mix(in srgb, var(--color-success) 30%, transparent)', transition: 'all 0.3s ease' } : {}}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                     <span style={{ fontWeight: '700', fontSize: '1rem' }}>{loan.deudor}</span>
                     <span className={`badge ${isActivo ? 'danger' : 'success'}`}>{isActivo ? 'Activo' : 'Pagado'}</span>
@@ -410,10 +410,11 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
 
               {capitalNumerico > 0 && tasaNum > 0 && (
                 <div style={{
-                  background: '#f0f9ff', border: '1px solid #bae6fd',
+                  background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
                   borderRadius: '12px', padding: '16px', marginBottom: '20px'
                 }}>
-                  <p style={{ fontSize: '13px', color: '#0369a1', margin: 0 }}>
+                  <p style={{ fontSize: '13px', color: 'var(--color-primary)', margin: 0 }}>
                     💡 Interés mensual estimado:{' '}
                     <strong>
                       ${interesMensualPreview.toLocaleString('es-CO')}

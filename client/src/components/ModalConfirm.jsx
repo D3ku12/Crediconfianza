@@ -27,7 +27,7 @@ export const ModalConfirm = memo(function ModalConfirm({ mensaje, onConfirmar, o
           </button>
           <button onClick={onConfirmar} style={{
             padding: '10px 24px', borderRadius: '8px',
-            border: 'none', background: '#ef4444',
+            border: 'none', background: 'var(--color-danger)',
             color: '#fff', cursor: 'pointer',
             fontSize: '14px', fontWeight: '500'
           }}>

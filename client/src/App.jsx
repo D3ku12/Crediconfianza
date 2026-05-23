@@ -14,7 +14,7 @@ const AdminUsuarios = lazy(() => import('./components/AdminUsuarios'));
 const Caja = lazy(() => import('./components/Caja'));
 
 const suspenseFallback = (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', fontSize: '14px', color: '#64748b' }}>
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', fontSize: '14px', color: 'var(--color-text-soft)' }}>
     Cargando...
   </div>
 );
@@ -140,7 +140,7 @@ export default function App() {
               {notificaciones.length > 0 && (
                 <span style={{
                   position: 'absolute', top: '-4px', right: '-4px',
-                  background: '#ef4444', color: '#fff',
+                  background: 'var(--color-danger)', color: '#fff',
                   borderRadius: '50%', width: '18px', height: '18px',
                   fontSize: '11px', display: 'flex',
                   alignItems: 'center', justifyContent: 'center',

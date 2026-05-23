@@ -100,12 +100,13 @@ export default function Resumen() {
       {/* Alert: Loans with >3 months without payment */}
       {prestamosEnRiesgo.length > 0 && (
         <div style={{
-          background: '#fef3c7', border: '1px solid #f59e0b',
+          background: 'color-mix(in srgb, var(--color-warning) 20%, transparent)',
+          border: '1px solid var(--color-warning)',
           borderRadius: '12px', padding: '16px', marginBottom: '16px',
           display: 'flex', alignItems: 'center', gap: '12px'
         }}>
-          <AlertTriangle size={20} style={{ color: '#92400e', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: '14px', color: '#92400e', fontWeight: '500' }}>
+          <AlertTriangle size={20} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-warning)', fontWeight: '500' }}>
             ⚠️ {prestamosEnRiesgo.length} préstamo(s) llevan más de 3 meses sin registrar abonos
           </p>
         </div>
@@ -114,12 +115,13 @@ export default function Resumen() {
       {/* Indicator: Highest pending interest */}
       {prestamoMayorInteres && mayorInteresPendiente > 0 && (
         <div style={{
-          background: '#f0f9ff', border: '1px solid #bae6fd',
+          background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
           borderRadius: '12px', padding: '16px', marginBottom: '16px',
           display: 'flex', alignItems: 'center', gap: '12px'
         }}>
-          <Clock size={20} style={{ color: '#0369a1', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: '14px', color: '#0369a1', fontWeight: '500' }}>
+          <Clock size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-primary)', fontWeight: '500' }}>
             Mayor riesgo: <strong>{prestamoMayorInteres.deudor}</strong> — {formatCOP(mayorInteresPendiente)} de intereses pendientes
           </p>
         </div>

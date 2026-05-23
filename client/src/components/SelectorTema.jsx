@@ -85,7 +85,7 @@ export function SelectorTema() {
               onClick={() => { setTemaActual(key); setAbierto(false); }}
               style={{
                 background: temaActual === key ? val.primary : 'transparent',
-                color: temaActual === key ? '#fff' : 'var(--color-primary)',
+                color: temaActual === key ? 'var(--color-on-primary)' : 'var(--color-primary)',
                 border: temaActual === key
                   ? 'none'
                   : '1px solid transparent',

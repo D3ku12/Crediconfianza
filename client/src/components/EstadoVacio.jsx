@@ -17,7 +17,7 @@ export const EstadoVacio = memo(function EstadoVacio({ icono, titulo, descripcio
       </p>
       {accion && (
         <button onClick={accion} style={{
-          background: 'var(--color-primary)', color: '#fff', border: 'none',
+          background: 'var(--color-primary)', color: 'var(--color-on-primary)', border: 'none',
           padding: '12px 24px', borderRadius: '10px',
           fontSize: '14px', fontWeight: '600', cursor: 'pointer'
         }}>
