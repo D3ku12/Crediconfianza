@@ -3,6 +3,8 @@ import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
 import { Shield, Bell } from 'lucide-react';
+import { api } from './utils/api';
+import { SelectorTema } from './components/SelectorTema';
 
 const Resumen = lazy(() => import('./components/Resumen'));
 const Prestamos = lazy(() => import('./components/Prestamos'));
@@ -22,6 +24,23 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('resumen');
   
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [prestamos, setPrestamos] = useState([]);
+  const [verNotifs, setVerNotifs] = useState(false);
+
+  useEffect(() => {
+    api.getPrestamos().then(setPrestamos).catch(() => {});
+  }, []);
+
+  const notificaciones = prestamos?.filter(p => {
+    if (!p.activo) return false;
+    const hoy = new Date();
+    const inicio = new Date(p.fecha_inicio);
+    const dias = (hoy - inicio) / (1000 * 60 * 60 * 24);
+    return dias > 90 && p.total_abonado_interes === 0;
+  }).map(p => ({
+    id: p.id,
+    mensaje: `⚠️ ${p.deudor} lleva más de 3 meses sin abonar`
+  })) || [];
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -113,10 +132,48 @@ export default function App() {
           </div>
           
           <div className="header-actions">
-            <button className="notification-btn" aria-label="Notificaciones">
+            <SelectorTema />
+            <button className="notification-btn" aria-label="Notificaciones" onClick={() => setVerNotifs(!verNotifs)} style={{ position: 'relative' }}>
               <Bell size={20} />
-              <span className="notification-dot"></span>
+              {notificaciones.length > 0 && (
+                <span style={{
+                  position: 'absolute', top: '-4px', right: '-4px',
+                  background: '#ef4444', color: '#fff',
+                  borderRadius: '50%', width: '18px', height: '18px',
+                  fontSize: '11px', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 'bold'
+                }}>
+                  {notificaciones.length}
+                </span>
+              )}
             </button>
+            {verNotifs && (
+              <div style={{
+                position: 'absolute', top: '60px', right: '16px',
+                background: '#fff', borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                width: '300px', zIndex: 1000, overflow: 'hidden'
+              }}>
+                <div style={{ padding: '16px', borderBottom: '1px solid #e2e8f0' }}>
+                  <strong style={{ fontSize: '14px' }}>Notificaciones</strong>
+                </div>
+                {notificaciones.length === 0 ? (
+                  <p style={{ padding: '16px', color: '#64748b', fontSize: '14px' }}>
+                    ✅ Todo al día, sin alertas pendientes
+                  </p>
+                ) : (
+                  notificaciones.map(n => (
+                    <div key={n.id} style={{
+                      padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
+                      fontSize: '13px', color: '#1e293b'
+                    }}>
+                      {n.mensaje}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
             <div className="user-badge">
               <span style={{ color: 'var(--text-secondary)' }}>Hola,</span>
               <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{user.nombre_usuario}</span>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { api, formatCOP, formatFecha } from '../utils/api';
 import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
@@ -284,7 +284,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                       const isActivo = parseFloat(loan.capital_pendiente) > 0;
                       const isHighlighted = highlightedId === loan.id;
                       return (
-                        <React.Fragment key={loan.id}>
+                        <Fragment key={loan.id}>
                           <tr style={isHighlighted ? { background: 'rgba(34,197,94,0.06)', transition: 'background 0.3s ease' } : {}}>
                             <td>
                               <button onClick={() => handleToggleExpand(loan.id)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
@@ -338,7 +338,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                               </td>
                             </tr>
                           )}
-                        </React.Fragment>
+                        </Fragment>
                       );
                     })}
                   </tbody>
