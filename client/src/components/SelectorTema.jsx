@@ -21,42 +21,42 @@ export function SelectorTema() {
     };
   }, [abierto]);
 
-  const esMobile = window.innerWidth < 640;
-
   return (
     <div ref={ref} style={{ position: 'relative' }}>
 
       <button
         onClick={() => setAbierto(!abierto)}
         title="Personalizar tema"
+        className="theme-selector-btn"
         style={{
           background: abierto ? 'var(--color-accent-soft)' : 'transparent',
           border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-md)',
-          padding: '8px 12px',
+          padding: '8px 10px',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
+          gap: '4px',
           color: 'var(--color-text)',
           fontSize: '13px',
           fontWeight: '500',
           minHeight: '44px',
           transition: 'all 0.2s ease',
+          flexShrink: 0,
         }}
       >
         🎨
-        <span>Tema</span>
+        <span className="theme-label">Tema</span>
       </button>
 
-      {abierto && esMobile && (
+      {abierto && (
         <div
           onClick={() => setAbierto(false)}
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.4)',
             backdropFilter: 'blur(2px)',
-            zIndex: 998,
+            zIndex: 9998,
             animation: 'fadeIn 0.2s ease',
           }}
         />
@@ -64,26 +64,19 @@ export function SelectorTema() {
 
       {abierto && (
         <div
+          className="theme-dropdown"
           style={{
-            position: esMobile ? 'fixed' : 'absolute',
-            ...(esMobile ? {
-              bottom: '80px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '92vw',
-              maxWidth: '360px',
-            } : {
-              top: 'calc(100% + 8px)',
-              right: 0,
-              width: '220px',
-            }),
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: 0,
+            width: '220px',
             background: 'var(--color-card-solid)',
             backdropFilter: 'blur(20px)',
             border: '1px solid var(--color-glass-border)',
             borderRadius: 'var(--radius-xl)',
             boxShadow: 'var(--color-shadow-hover)',
             overflow: 'hidden',
-            zIndex: 999,
+            zIndex: 9999,
             animation: 'slideUp 0.25s ease',
           }}
         >

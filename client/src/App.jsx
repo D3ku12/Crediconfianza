@@ -134,9 +134,8 @@ export default function App() {
       <main className="main-content">
         <header className="app-header" style={{
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
+          flexDirection: 'column',
+          padding: '8px 12px',
           background: 'var(--color-glass)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
@@ -144,109 +143,125 @@ export default function App() {
           position: 'sticky',
           top: 0,
           zIndex: 50,
-          gap: '8px',
+          gap: '4px',
           marginBottom: 0,
         }}>
+          {/* Fila 1: hamburguesa + título + notificaciones */}
           <div style={{
             display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
+            alignItems: 'center',
+            gap: '8px',
             minWidth: 0,
-            flex: 1,
           }}>
+            <button className="mobile-menu-trigger" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú" style={{ flexShrink: 0 }}>
+              <Menu size={22} />
+            </button>
             <h1 style={{
-              fontSize: 'clamp(14px, 4vw, 20px)',
+              fontSize: 'clamp(13px, 3.5vw, 18px)',
               fontWeight: '700',
               color: 'var(--color-text)',
               margin: 0,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              flex: 1,
+              minWidth: 0,
             }}>
               {getTabTitle()}
             </h1>
-            <p style={{
-              fontSize: 'clamp(11px, 2.5vw, 13px)',
+            <div className="header-actions" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <SelectorTema />
+              <button className="notification-btn" aria-label="Notificaciones" onClick={() => setVerNotifs(!verNotifs)} style={{ position: 'relative', flexShrink: 0 }}>
+                <Bell size={18} />
+                {notificaciones.length > 0 && (
+                  <span style={{
+                    position: 'absolute', top: '-4px', right: '-4px',
+                    background: 'var(--color-danger)', color: '#fff',
+                    borderRadius: '50%', width: '16px', height: '16px',
+                    fontSize: '10px', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 'bold'
+                  }}>
+                    {notificaciones.length}
+                  </span>
+                )}
+              </button>
+              {verNotifs && (
+                <div style={{
+                  position: 'absolute', top: '52px', right: '12px',
+                  background: 'var(--color-card)', borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                  width: 'clamp(240px, 85vw, 340px)', zIndex: 1000, overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '14px', borderBottom: '1px solid var(--border-color)' }}>
+                    <strong style={{ fontSize: '13px' }}>Notificaciones</strong>
+                  </div>
+                  {notificaciones.length === 0 ? (
+                    <p style={{ padding: '14px', color: 'var(--color-text-soft)', fontSize: '13px' }}>
+                      ✅ Todo al día, sin alertas pendientes
+                    </p>
+                  ) : (
+                    notificaciones.map(n => (
+                      <div key={n.id} style={{
+                        padding: '10px 14px', borderBottom: '1px solid var(--border-light)',
+                        fontSize: '12px', color: 'var(--color-text)'
+                      }}>
+                        {n.mensaje}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Fila 2: saludo + badge + avatar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            paddingLeft: '4px',
+            minWidth: 0,
+            overflow: 'hidden',
+          }}>
+            <span className="header-greeting" style={{
+              fontSize: '12px',
               color: 'var(--text-secondary)',
-              margin: 0,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              minWidth: 0,
             }}>
-              CREDIALIADO — COP ($)
-            </p>
-          </div>
-          
-          <button className="mobile-menu-trigger" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú">
-            <Menu size={24} />
-          </button>
-          <div className="header-actions" style={{ flexShrink: 0 }}>
-            <SelectorTema />
-            <button className="notification-btn" aria-label="Notificaciones" onClick={() => setVerNotifs(!verNotifs)} style={{ position: 'relative' }}>
-              <Bell size={20} />
-              {notificaciones.length > 0 && (
-                <span style={{
-                  position: 'absolute', top: '-4px', right: '-4px',
-                  background: 'var(--color-danger)', color: '#fff',
-                  borderRadius: '50%', width: '18px', height: '18px',
-                  fontSize: '11px', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 'bold'
-                }}>
-                  {notificaciones.length}
-                </span>
-              )}
-            </button>
-            {verNotifs && (
-              <div style={{
-                position: 'absolute', top: '60px', right: '16px',
-                background: 'var(--color-card)', borderRadius: '12px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                width: 'clamp(260px, 90vw, 360px)', zIndex: 1000, overflow: 'hidden'
+              Hola, <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{user.nombre_usuario.split(' ')[0]}</strong>
+            </span>
+            {user.es_admin && (
+              <span className="admin-badge" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                fontSize: '10px',
+                color: 'var(--warning-text)',
+                background: 'var(--warning-bg)',
+                padding: '1px 8px',
+                borderRadius: '99px',
+                border: '1px solid var(--warning-border)',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                minWidth: 'fit-content',
               }}>
-                <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
-                  <strong style={{ fontSize: '14px' }}>Notificaciones</strong>
-                </div>
-                {notificaciones.length === 0 ? (
-                  <p style={{ padding: '16px', color: 'var(--color-text-soft)', fontSize: '14px' }}>
-                    ✅ Todo al día, sin alertas pendientes
-                  </p>
-                ) : (
-                  notificaciones.map(n => (
-                    <div key={n.id} style={{
-                      padding: '12px 16px', borderBottom: '1px solid var(--border-light)',
-                      fontSize: '13px', color: 'var(--color-text)'
-                    }}>
-                      {n.mensaje}
-                    </div>
-                  ))
-                )}
-              </div>
+                <Shield size={8} />
+                Admin
+              </span>
             )}
-            <div className="user-badge">
-              <span style={{ color: 'var(--text-secondary)' }}>Hola,</span>
-              <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{user.nombre_usuario}</span>
-              {user.es_admin && (
-                <span 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.2rem',
-                    fontSize: '0.7rem', 
-                    color: 'var(--warning-text)', 
-                    background: 'var(--warning-bg)', 
-                    padding: '0.15rem 0.5rem', 
-                    borderRadius: '99px',
-                    border: '1px solid var(--warning-border)'
-                  }}
-                >
-                  <Shield size={10} />
-                  Admin
-                </span>
-              )}
-              <div className="avatar">
-                {user.nombre_usuario.charAt(0).toUpperCase()}
-              </div>
+            <div className="avatar" style={{
+              width: '24px', height: '24px', minWidth: '24px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--color-primary-solid) 0%, var(--color-primary-hover) 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--color-on-primary)', fontSize: '11px', fontWeight: '700',
+              flexShrink: 0, marginLeft: 'auto',
+            }}>
+              {user.nombre_usuario.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>
