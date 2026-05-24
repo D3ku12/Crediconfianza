@@ -15,101 +15,37 @@ function formatDateDDMMYYYY(date) {
   return `${day}/${month}/${year}`;
 }
 
-function getMonthName(monthIndex) {
-  const months = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-  ];
-  return months[monthIndex];
-}
-
-function buildMonthlyBreakdown(prestamo, abonos) {
-  const tasa = parseFloat(prestamo.tasa_interes) / 100;
-  const capitalOriginal = parseFloat(prestamo.capital_original);
-  let capitalVigente = capitalOriginal;
-
-  const startDate = new Date(prestamo.fecha_inicio.split('T')[0]);
-  const today = new Date();
-  const rows = [];
-
-  const abonosByMonth = {};
-  for (const a of abonos) {
-    const d = new Date(a.fecha.split('T')[0]);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (!abonosByMonth[key]) abonosByMonth[key] = [];
-    abonosByMonth[key].push(a);
-  }
-
-  let saldoInteres = 0;
-
-  const startYear = startDate.getFullYear();
-  const startMonth = startDate.getMonth();
-  const totalMonths = (today.getFullYear() - startYear) * 12 + (today.getMonth() - startMonth) + 1;
-
-  for (let i = 0; i < totalMonths; i++) {
-    const currentDate = new Date(startYear, startMonth + i, 1);
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-
-    const label = `${getMonthName(month)} ${year}`;
-    const interesGenerado = capitalVigente * tasa;
-
-    const monthAbonos = abonosByMonth[key] || [];
-    const abonosInteres = monthAbonos
-      .filter(a => a.tipo === 'interes')
-      .reduce((sum, a) => sum + parseFloat(a.monto), 0);
-    const abonosCapital = monthAbonos
-      .filter(a => a.tipo === 'capital')
-      .reduce((sum, a) => sum + parseFloat(a.monto), 0);
-
-    saldoInteres = saldoInteres + interesGenerado - abonosInteres;
-
-    rows.push({
-      mes: label,
-      capitalVigente,
-      interesGenerado,
-      abonosInteres,
-      abonosCapital,
-      saldoInteres,
-    });
-
-    capitalVigente -= abonosCapital;
-    if (capitalVigente < 0) capitalVigente = 0;
-  }
-
-  return rows;
-}
-
 export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nombreUsuario = 'Usuario') {
   if (!prestamo) return;
 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
 
   // ---- ENCABEZADO ----
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('ESTADO DE CUENTA', 105, 20, { align: 'center' });
+  doc.text('ESTADO DE CUENTA', pageWidth / 2, 20, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}`, 14, 30);
-  doc.text(`Generado por: ${nombreUsuario}`, 14, 36);
+  const fechaActual = new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
+  doc.text(`Fecha: ${fechaActual}`, 14, 30);
+  doc.text(`Usuario: ${nombreUsuario}`, 14, 36);
 
   // ---- DATOS DEL CLIENTE ----
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('INFORMACIÓN DEL CLIENTE', 14, 48);
+  doc.text('DATOS DEL CLIENTE', 14, 48);
 
   autoTable(doc, {
     startY: 52,
     body: [
-      ['Cliente', prestamo.deudor],
+      ['Nombre', prestamo.deudor],
       ['Teléfono', cliente.telefono || '—'],
       ['Documento', cliente.documento || '—'],
-      ['Fecha inicio', new Date(prestamo.fecha_inicio).toLocaleDateString('es-CO')],
-      ['Tasa de interés', `${prestamo.tasa_interes}% mensual`],
+      ['Fecha inicio', formatDateDDMMYYYY(new Date(prestamo.fecha_inicio))],
+      ['Tasa interés', `${prestamo.tasa_interes}% mensual`],
     ],
     theme: 'plain',
     styles: { fontSize: 10 },
@@ -126,6 +62,7 @@ export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nomb
     .reduce((s, a) => s + parseFloat(a.monto), 0);
 
   const totalPagado = totalPagadoCapital + totalPagadoInteres;
+  const totalDeuda = parseFloat(prestamo.capital_pendiente) + parseFloat(prestamo.interes_pendiente);
 
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
@@ -133,29 +70,41 @@ export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nomb
 
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 16,
-    head: [['Concepto', 'Valor']],
     body: [
-      ['Capital original prestado',     formatCOP(prestamo.capital_original)],
-      ['Capital pendiente por pagar',    formatCOP(prestamo.capital_pendiente)],
-      ['Capital pagado',                 formatCOP(totalPagadoCapital)],
-      ['Interés mensual actual',         formatCOP(prestamo.interes_mensual)],
-      ['Total intereses generados',      formatCOP(prestamo.interes_acumulado)],
-      ['Total intereses pagados',        formatCOP(totalPagadoInteres)],
-      ['Intereses pendientes',           formatCOP(prestamo.interes_pendiente)],
-      ['TOTAL PAGADO (capital + interés)', formatCOP(totalPagado)],
-      ['TOTAL DEUDA ACTUAL',             formatCOP(parseFloat(prestamo.capital_pendiente) + parseFloat(prestamo.interes_pendiente))],
+      ['Capital original', 'Capital pendiente', 'Capital pagado', ''],
+      [
+        formatCOP(prestamo.capital_original),
+        formatCOP(prestamo.capital_pendiente),
+        formatCOP(totalPagadoCapital),
+        '',
+      ],
+      ['Interés mensual', 'Total intereses generados', 'Total intereses pagados', 'Intereses pendientes'],
+      [
+        formatCOP(prestamo.interes_mensual),
+        formatCOP(prestamo.interes_acumulado || 0),
+        formatCOP(totalPagadoInteres),
+        formatCOP(prestamo.interes_pendiente),
+      ],
+      ['TOTAL PAGADO (capital + interés)', formatCOP(totalPagado), '', ''],
+      ['TOTAL DEUDA ACTUAL', formatCOP(totalDeuda), '', ''],
     ],
+    theme: 'grid',
+    styles: { fontSize: 10, halign: 'center' },
     headStyles: { fillColor: [108, 99, 255] },
-    bodyStyles: { fontSize: 10 },
     didParseCell: (data) => {
-      if (data.row.index === 7 || data.row.index === 8) {
+      if (data.row.index === 0 || data.row.index === 2 || data.row.index === 4 || data.row.index === 5) {
         data.cell.styles.fontStyle = 'bold';
+      }
+      if (data.row.index === 4) {
         data.cell.styles.fillColor = [240, 240, 255];
+      }
+      if (data.row.index === 5) {
+        data.cell.styles.fillColor = [255, 240, 240];
       }
     }
   });
 
-  // ---- HISTORIAL DE ABONOS ----
+  // ---- HISTORIAL DE PAGOS ----
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('HISTORIAL DE PAGOS', 14, doc.lastAutoTable.finalY + 12);
@@ -165,7 +114,7 @@ export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nomb
     head: [['Fecha', 'Tipo', 'Monto', 'Nota']],
     body: abonos.length > 0
       ? abonos.map(a => [
-          new Date(a.fecha).toLocaleDateString('es-CO'),
+          formatDateDDMMYYYY(new Date(a.fecha)),
           a.tipo === 'interes' ? 'Interés' : 'Capital',
           formatCOP(a.monto),
           a.nota || '—'
@@ -182,9 +131,9 @@ export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nomb
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Página ${i} de ${pageCount} — Documento generado automáticamente`,
-      105,
-      doc.internal.pageSize.height - 10,
+      `Página ${i} de ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 10,
       { align: 'center' }
     );
   }

@@ -333,9 +333,6 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                     {isActivo && <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1, minHeight: '44px' }}><Receipt size={14} /> Abonar</button>}
-                    <button className="btn btn-secondary btn-small" onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{ minHeight: '44px' }} title="Descargar PDF">
-                      {generandoPDF === loan.id ? 'Generando...' : <><FileDown size={14} /> PDF</>}
-                    </button>
                     <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
                     <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
                     <button onClick={() => handleToggleExpand(loan.id)} className="btn btn-secondary btn-small" style={{ minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
