@@ -7,8 +7,8 @@ const Clientes = memo(function Clientes() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [clienteEditando, setClienteEditando] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
-  const [form, setForm] = useState({
-    nombre: '', telefono: '', email: '', documento: '', notas: ''
+  const [formData, setFormData] = useState({
+    nombre: '', telefono: '', descripcion: ''
   });
 
   // ── Cargar clientes ──
@@ -28,19 +28,17 @@ const Clientes = memo(function Clientes() {
 
   // ── Abrir formulario nuevo ──
   const abrirNuevo = () => {
-    setForm({ nombre:'', telefono:'', email:'', documento:'', notas:'' });
+    setFormData({ nombre:'', telefono:'', descripcion:'' });
     setClienteEditando(null);
     setMostrarFormulario(true);
   };
 
   // ── Abrir formulario editar ──
   const abrirEditar = (cliente) => {
-    setForm({
-      nombre:    cliente.nombre    || '',
-      telefono:  cliente.telefono  || '',
-      email:     cliente.email     || '',
-      documento: cliente.documento || '',
-      notas:     cliente.notas     || '',
+    setFormData({
+      nombre:      cliente.nombre      || '',
+      telefono:    cliente.telefono    || '',
+      descripcion: cliente.descripcion || '',
     });
     setClienteEditando(cliente);
     setMostrarFormulario(true);
@@ -48,12 +46,17 @@ const Clientes = memo(function Clientes() {
 
   // ── Guardar (crear o editar) ──
   const guardar = async () => {
-    if (!form.nombre.trim()) return;
+    if (!formData.nombre.trim()) return;
     try {
+      const datos = {
+        nombre: formData.nombre.trim(),
+        telefono: formData.telefono.trim(),
+        descripcion: formData.descripcion.trim()
+      };
       if (clienteEditando) {
-        await api.updateCliente(clienteEditando.id, form);
+        await api.updateCliente(clienteEditando.id, datos);
       } else {
-        await api.createCliente(form);
+        await api.createCliente(datos);
       }
       setMostrarFormulario(false);
       cargarClientes();
@@ -378,79 +381,23 @@ const Clientes = memo(function Clientes() {
             <input
               style={inputStyle}
               placeholder="Nombre completo *"
-              value={form.nombre}
-              onChange={e => setForm({ ...form, nombre: e.target.value })}
+              value={formData.nombre}
+              onChange={e => setFormData({ ...formData, nombre: e.target.value })}
               autoFocus
             />
             <input
               style={inputStyle}
-              placeholder="Número de teléfono"
-              value={form.telefono}
-              onChange={e => setForm({ ...form, telefono: e.target.value })}
+              placeholder="Número de teléfono *"
+              value={formData.telefono}
+              onChange={e => setFormData({ ...formData, telefono: e.target.value })}
               inputMode="tel"
               type="tel"
             />
-            <input
-              style={inputStyle}
-              placeholder="Correo electrónico"
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              inputMode="email"
-              type="email"
-            />
-            <input
-              style={inputStyle}
-              placeholder="Documento de identidad"
-              value={form.documento}
-              onChange={e => setForm({ ...form, documento: e.target.value })}
-            />
-            <button
-              onClick={async () => {
-                try {
-                  if (!('contacts' in navigator && 'ContactsManager' in window)) {
-                    alert('Tu navegador no soporta acceso a contactos. Ingresa el número manualmente.');
-                    return;
-                  }
-                  const props = ['name', 'tel'];
-                  const opts = { multiple: false };
-                  const contactos = await navigator.contacts.select(props, opts);
-                  if (contactos.length > 0) {
-                    const c = contactos[0];
-                    setForm(prev => ({
-                      ...prev,
-                      nombre:   c.name?.[0]   || prev.nombre,
-                      telefono: c.tel?.[0]    || prev.telefono,
-                    }));
-                  }
-                } catch (e) {
-                  console.error('Error accediendo contactos:', e);
-                  alert('No se pudo acceder a los contactos.');
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px dashed var(--color-border)',
-                background: 'transparent',
-                color: 'var(--color-text-soft)',
-                fontSize: '14px',
-                cursor: 'pointer',
-                minHeight: '44px',
-                marginBottom: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              📱 Importar desde contactos
-            </button>
             <textarea
               style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
-              placeholder="Descripción o notas del cliente"
-              value={form.notas}
-              onChange={e => setForm({ ...form, notas: e.target.value })}
+              placeholder="Descripción (opcional)"
+              value={formData.descripcion}
+              onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
             />
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
@@ -473,12 +420,12 @@ const Clientes = memo(function Clientes() {
               </button>
               <button
                 onClick={guardar}
-                disabled={!form.nombre.trim()}
+                disabled={!formData.nombre.trim()}
                 style={{
                   ...btnPrimary,
                   flex: 1,
                   justifyContent: 'center',
-                  opacity: !form.nombre.trim() ? 0.5 : 1,
+                  opacity: !formData.nombre.trim() ? 0.5 : 1,
                 }}
               >
                 {clienteEditando ? 'Guardar cambios' : 'Crear cliente'}

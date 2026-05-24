@@ -574,17 +574,20 @@ app.get('/api/clientes', authenticateToken, async (req, res) => {
 
 // POST /api/clientes -> Crear cliente
 app.post('/api/clientes', authenticateToken, async (req, res) => {
-  const { nombre, telefono, email, documento, notas } = req.body;
+  const { nombre, telefono, descripcion } = req.body;
   if (!nombre?.trim()) {
     return res.status(400).json({ mensaje: 'El nombre es requerido.' });
+  }
+  if (!telefono?.trim()) {
+    return res.status(400).json({ mensaje: 'El teléfono es requerido.' });
   }
   try {
     const result = await db.query(
       `INSERT INTO clientes 
-        (usuario_id, nombre, telefono, email, documento, notas)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [req.user.id, nombre.trim(), telefono || null,
-       email || null, documento || null, notas || null]
+        (usuario_id, nombre, telefono, descripcion)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.user.id, nombre.trim(), telefono.trim(),
+       descripcion?.trim() || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -596,15 +599,15 @@ app.post('/api/clientes', authenticateToken, async (req, res) => {
 // PUT /api/clientes/:id -> Actualizar cliente
 app.put('/api/clientes/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { nombre, telefono, email, documento, notas } = req.body;
+  const { nombre, telefono, descripcion } = req.body;
   try {
     const userIds = await getSharedUserIds(req.user.id);
     const result = await db.query(
       `UPDATE clientes 
-       SET nombre=$1, telefono=$2, email=$3, documento=$4, notas=$5
-       WHERE id=$6 AND usuario_id = ANY($7) RETURNING *`,
-      [nombre, telefono||null, email||null,
-       documento||null, notas||null, id, userIds]
+       SET nombre=$1, telefono=$2, descripcion=$3
+       WHERE id=$4 AND usuario_id = ANY($5) RETURNING *`,
+      [nombre, telefono||null,
+       descripcion||null, id, userIds]
     );
     if (result.rows.length === 0)
       return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
