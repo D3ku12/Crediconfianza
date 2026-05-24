@@ -54,12 +54,12 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
 
   useEffect(() => {
     const cargarClientes = async () => {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/clientes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setClientes(Array.isArray(data) ? data : []);
+      try {
+        const data = await api.getClientes();
+        setClientes(Array.isArray(data) ? data : []);
+      } catch (err) {
+        // handled silently
+      }
     };
     cargarClientes();
   }, []);
@@ -224,16 +224,12 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     }
   };
 
-  const verEstadoCuenta = async (loanId, deudor) => {
-    const token = localStorage.getItem('token');
+  const verEstadoCuenta = async (loanId) => {
     const ventana = window.open('', '_blank');
     if (!ventana) { alert('Permite ventanas emergentes para ver el estado de cuenta.'); return; }
     ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:#666;">Cargando...</p>');
     try {
-      const res = await fetch(`/api/prestamos/${loanId}/estado-cuenta`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const html = await res.text();
+      const html = await api.getPrestamoEstadoCuenta(loanId);
       ventana.document.write(html);
       ventana.document.close();
     } catch (err) {

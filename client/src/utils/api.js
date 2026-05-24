@@ -1,58 +1,69 @@
-const BASE_URL = ''; // Se usa ruta relativa por el proxy en dev y porque en prod servimos el build en el mismo dominio
+import { API_URL } from '../config/api'
 
 async function request(url, options = {}) {
-  const token = localStorage.getItem('token');
-  
+  const token = localStorage.getItem('token')
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
-  };
+  }
 
-  const response = await fetch(`${BASE_URL}${url}`, {
+  const response = await fetch(`${API_URL}${url}`, {
     ...options,
     headers,
-  });
+  })
 
   if (response.status === 401 || response.status === 403) {
-    // Si el token expira o no es válido, cerramos sesión
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    // Si no estamos ya en la pantalla de login, forzar recarga para redirigir
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
     if (window.location.pathname !== '/') {
-      window.location.reload();
+      window.location.reload()
     }
   }
 
-  const data = await response.json();
+  const data = await response.json()
 
   if (!response.ok) {
-    throw new Error(data.mensaje || 'Algo salió mal.');
+    throw new Error(data.mensaje || 'Algo salio mal.')
   }
 
-  return data;
+  return data
+}
+
+async function requestHtml(url) {
+  const token = localStorage.getItem('token')
+  const response = await fetch(`${API_URL}${url}`, {
+    headers: {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ mensaje: 'Error desconocido' }))
+    throw new Error(error.mensaje || 'Error al obtener el documento')
+  }
+  return response.text()
 }
 
 export const api = {
-  // Autenticación
-  login: (username, password) => 
+  // Autenticacion
+  login: (username, password) =>
     request('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     }),
-    
+
   register: (nombre_usuario, username, password, es_admin, grupo_id) =>
     request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ nombre_usuario, username, password, es_admin, grupo_id }),
     }),
 
-  // Préstamos y Deudores
+  // Prestamos y Deudores
   getPrestamos: () => request('/api/prestamos'),
   getDeudores: () => request('/api/deudores'),
-  
-  createPrestamo: (prestamo) => 
+
+  createPrestamo: (prestamo) =>
     request('/api/prestamos', {
       method: 'POST',
       body: JSON.stringify(prestamo),
@@ -63,7 +74,7 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(prestamo),
     }),
-    
+
   deletePrestamo: (id) =>
     request(`/api/prestamos/${id}`, {
       method: 'DELETE',
@@ -75,17 +86,17 @@ export const api = {
     }),
 
   // Abonos
-  createAbono: (abono) => 
+  createAbono: (abono) =>
     request('/api/abonos', {
       method: 'POST',
       body: JSON.stringify(abono),
     }),
-    
+
   deleteAbono: (id) =>
     request(`/api/abonos/${id}`, {
       method: 'DELETE',
     }),
-    
+
   getAbonos: (prestamoId) => request(`/api/prestamos/${prestamoId}/abonos`),
 
   // Resumen
@@ -149,7 +160,11 @@ export const api = {
     request(`/api/clientes/${id}`, {
       method: 'DELETE',
     }),
-};
+
+  // Estado de cuenta (retorna HTML)
+  getPrestamoEstadoCuenta: (id) => requestHtml(`/api/prestamos/${id}/estado-cuenta`),
+  getClienteEstadoCuenta: (id) => requestHtml(`/api/clientes/${id}/estado-cuenta`),
+}
 
 // Utilidad para formatear moneda COP
 export const formatCOP = (valor) => {
@@ -158,22 +173,21 @@ export const formatCOP = (valor) => {
     currency: 'COP',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(valor);
-};
+  }).format(valor)
+}
 
-// Utilidad para formatear fechas de forma legible en español
+// Utilidad para formatear fechas de forma legible en espanol
 export const formatFecha = (fechaStr) => {
-  if (!fechaStr) return '';
-  // Asegurarnos de extraer solo YYYY-MM-DD ignorando la zona horaria (T...)
-  const datePart = fechaStr.split('T')[0];
-  const [year, month, day] = datePart.split('-').map(Number);
-  const fecha = new Date(year, month - 1, day);
-  
-  if (isNaN(fecha.getTime())) return 'Fecha inválida';
-  
+  if (!fechaStr) return ''
+  const datePart = fechaStr.split('T')[0]
+  const [year, month, day] = datePart.split('-').map(Number)
+  const fecha = new Date(year, month - 1, day)
+
+  if (isNaN(fecha.getTime())) return 'Fecha invalida'
+
   return fecha.toLocaleDateString('es-CO', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
-};
+  })
+}

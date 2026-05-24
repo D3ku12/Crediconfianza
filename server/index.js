@@ -1,18 +1,17 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const db = require('./db');
-const { authenticateToken, requireAdmin, JWT_SECRET } = require('./middleware/auth');
-const { calcularIntereses } = require('./utils/calcularIntereses');
-
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+import 'dotenv/config'
+import express from 'express'
+import cors from 'cors'
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+import zlib from 'zlib'
+import db from './db.js'
+import { authenticateToken, requireAdmin, JWT_SECRET } from './middleware/auth.js'
+import { calcularIntereses, ahoraCol } from './utils/calcularIntereses.js'
 
 // ==========================================
-// VALIDACIÓN DE VARIABLES DE ENTORNO AL ARRANQUE
+// VALIDACION DE VARIABLES DE ENTORNO AL ARRANQUE
 // ==========================================
-const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL', 'CLIENT_URL'];
+const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL', 'FRONTEND_URL'];
 for (const v of requiredEnvVars) {
   if (!process.env[v]) {
     console.error(`ERROR CRÍTICO: Variable de entorno ${v} no definida.`);
@@ -25,37 +24,38 @@ if (process.env.JWT_SECRET.length < 32) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // ==========================================
 // CABECERAS DE SEGURIDAD HTTP (reemplazo manual de helmet)
 // ==========================================
 app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  next();
-});
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+  next()
+})
 
 // ==========================================
 // CORS RESTRICTIVO
 // ==========================================
-const corsOptions = {
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+app.use(cors({
+  origin: [
+    process.env.FRONTEND_URL,
+    'http://localhost:5173'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-};
-app.use(cors(corsOptions));
-app.use(express.json());
+}))
+app.use(express.json())
 
 // ==========================================
-// COMPRESIÓN GZIP MANUAL (sin dependencias externas)
+// COMPRESION GZIP MANUAL (sin dependencias externas)
 // ==========================================
-const zlib = require('zlib');
 
 app.use((req, res, next) => {
   const acceptEncoding = req.headers['accept-encoding'] || '';
@@ -1743,22 +1743,6 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
     console.error('Error al calcular resumen:', error);
     res.status(500).json({ mensaje: 'Error al obtener resumen de métricas.' });
   }
-});
-
-
-// ==========================================
-// SERVIR FRONTEND CLIENTE EN PRODUCCIÓN
-// ==========================================
-
-const clientDistPath = path.join(__dirname, '../client/dist');
-app.use(express.static(clientDistPath));
-
-app.get('*', (req, res) => {
-  // Solo responder con index.html si no es una ruta de API
-  if (req.originalUrl.startsWith('/api')) {
-    return res.status(404).json({ mensaje: 'Ruta API no encontrada.' });
-  }
-  res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 

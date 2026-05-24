@@ -1,40 +1,34 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken'
 
-// JWT_SECRET debe venir de variable de entorno. Se valida en index.js al arrancar.
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  // El token viene formateado como "Bearer <token>"
-  const token = authHeader && authHeader.split(' ')[1];
+export function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1]
 
   if (!token) {
-    return res.status(401).json({ mensaje: 'Acceso denegado. Token no proporcionado.' });
+    return res.status(401).json({ mensaje: 'Acceso denegado. Token no proporcionado.' })
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      return res.status(403).json({ mensaje: 'Token inválido o expirado.' });
+      return res.status(403).json({ mensaje: 'Token invalido o expirado.' })
     }
-    req.user = user;
-    next();
-  });
+    req.user = user
+    next()
+  })
 }
 
-function requireAdmin(req, res, next) {
+export function requireAdmin(req, res, next) {
   if (!req.user) {
-    return res.status(401).json({ mensaje: 'No autenticado.' });
+    return res.status(401).json({ mensaje: 'No autenticado.' })
   }
-  
+
   if (!req.user.es_admin) {
-    return res.status(403).json({ mensaje: 'Acceso prohibido. Se requieren privilegios de administrador.' });
+    return res.status(403).json({ mensaje: 'Acceso prohibido. Se requieren privilegios de administrador.' })
   }
-  
-  next();
+
+  next()
 }
 
-module.exports = {
-  authenticateToken,
-  requireAdmin,
-  JWT_SECRET
-};
+export { JWT_SECRET }

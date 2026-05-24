@@ -1,66 +1,66 @@
 function ahoraCol() {
-  const ahora = new Date();
-  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000;
-  const colMs = utcMs - 5 * 3600000;
-  const colDate = new Date(colMs);
-  return new Date(colDate.getFullYear(), colDate.getMonth(), colDate.getDate());
+  const ahora = new Date()
+  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000
+  const colMs = utcMs - 5 * 3600000
+  const colDate = new Date(colMs)
+  return new Date(colDate.getFullYear(), colDate.getMonth(), colDate.getDate())
 }
 
 function obtenerFechaInicioMes(fechaBase, mesesSumar) {
-  const [y, m, d] = [fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate()];
-  const v = new Date(y, m + mesesSumar, d);
+  const [y, m, d] = [fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate()]
+  const v = new Date(y, m + mesesSumar, d)
   if (v.getDate() !== d) {
-    v.setDate(0);
+    v.setDate(0)
   }
-  v.setHours(0, 0, 0, 0);
-  return v;
+  v.setHours(0, 0, 0, 0)
+  return v
 }
 
 function calcularIntereses(prestamo, abonos) {
-  const capitalOriginal = parseFloat(prestamo.capital_original);
-  const tasa = parseFloat(prestamo.tasa_interes);
-  const fechaInicio = new Date(prestamo.fecha_inicio);
-  fechaInicio.setHours(0, 0, 0, 0);
+  const capitalOriginal = parseFloat(prestamo.capital_original)
+  const tasa = parseFloat(prestamo.tasa_interes)
+  const fechaInicio = new Date(prestamo.fecha_inicio)
+  fechaInicio.setHours(0, 0, 0, 0)
 
-  const hoy = ahoraCol();
+  const hoy = ahoraCol()
 
   // Ordenar abonos a capital por fecha ASC
   const abonosCapital = (abonos || [])
     .filter(a => a.tipo === 'capital')
     .map(a => {
-      const f = new Date(a.fecha);
-      f.setHours(0, 0, 0, 0);
-      return { monto: parseFloat(a.monto), fecha: f };
+      const f = new Date(a.fecha)
+      f.setHours(0, 0, 0, 0)
+      return { monto: parseFloat(a.monto), fecha: f }
     })
-    .sort((a, b) => a.fecha - b.fecha);
+    .sort((a, b) => a.fecha - b.fecha)
 
-  const totalAbonoCapital = abonosCapital.reduce((s, a) => s + a.monto, 0);
+  const totalAbonoCapital = abonosCapital.reduce((s, a) => s + a.monto, 0)
   const totalAbonoInteres = (abonos || [])
     .filter(a => a.tipo === 'interes')
-    .reduce((s, a) => s + parseFloat(a.monto), 0);
+    .reduce((s, a) => s + parseFloat(a.monto), 0)
 
   // Recorrer mes a mes desde fecha_inicio hasta hoy
-  let totalInteresGenerado = 0;
-  const desglose = [];
-  let monthIndex = 0;
-  let monthStart = obtenerFechaInicioMes(fechaInicio, 0);
+  let totalInteresGenerado = 0
+  const desglose = []
+  let monthIndex = 0
+  let monthStart = obtenerFechaInicioMes(fechaInicio, 0)
 
   while (monthStart < hoy) {
-    const monthEnd = obtenerFechaInicioMes(fechaInicio, monthIndex + 1);
+    const monthEnd = obtenerFechaInicioMes(fechaInicio, monthIndex + 1)
 
     // Capital vigente = capital_original - suma de abonos a capital ANTERIORES a este mes
-    let sumAbonosBeforeThisMonth = 0;
+    let sumAbonosBeforeThisMonth = 0
     for (const ab of abonosCapital) {
       if (ab.fecha < monthStart) {
-        sumAbonosBeforeThisMonth += ab.monto;
+        sumAbonosBeforeThisMonth += ab.monto
       }
     }
-    const capitalEsteMes = Math.max(0, capitalOriginal - sumAbonosBeforeThisMonth);
+    const capitalEsteMes = Math.max(0, capitalOriginal - sumAbonosBeforeThisMonth)
 
-    if (capitalEsteMes <= 0) break;
+    if (capitalEsteMes <= 0) break
 
-    const interesEsteMes = capitalEsteMes * (tasa / 100);
-    totalInteresGenerado += interesEsteMes;
+    const interesEsteMes = capitalEsteMes * (tasa / 100)
+    totalInteresGenerado += interesEsteMes
 
     desglose.push({
       mes: monthIndex + 1,
@@ -71,34 +71,34 @@ function calcularIntereses(prestamo, abonos) {
       abonosCapitalEsteMes: abonosCapital
         .filter(ab => ab.fecha >= monthStart && ab.fecha < monthEnd)
         .map(ab => ab.monto)
-    });
+    })
 
-    monthIndex++;
-    monthStart = obtenerFechaInicioMes(fechaInicio, monthIndex);
+    monthIndex++
+    monthStart = obtenerFechaInicioMes(fechaInicio, monthIndex)
   }
 
-  const capitalPendiente = Math.max(0, capitalOriginal - totalAbonoCapital);
-  const interesPendiente = Math.max(0, totalInteresGenerado - totalAbonoInteres);
-  const interesMensualActual = capitalPendiente > 0 ? capitalPendiente * (tasa / 100) : 0;
+  const capitalPendiente = Math.max(0, capitalOriginal - totalAbonoCapital)
+  const interesPendiente = Math.max(0, totalInteresGenerado - totalAbonoInteres)
+  const interesMensualActual = capitalPendiente > 0 ? capitalPendiente * (tasa / 100) : 0
 
   // Tiempo transcurrido (informativo)
-  const diasTranscurridos = Math.floor((hoy - fechaInicio) / (1000 * 60 * 60 * 24));
-  const mesesReales = Math.floor(diasTranscurridos / 30);
-  const diasRestantes = diasTranscurridos % 30;
+  const diasTranscurridos = Math.floor((hoy - fechaInicio) / (1000 * 60 * 60 * 24))
+  const mesesReales = Math.floor(diasTranscurridos / 30)
+  const diasRestantes = diasTranscurridos % 30
 
-  let tiempoTexto = '';
+  let tiempoTexto = ''
   if (diasTranscurridos === 0) {
-    tiempoTexto = 'hoy';
+    tiempoTexto = 'hoy'
   } else if (mesesReales === 0) {
-    tiempoTexto = `${diasTranscurridos} día${diasTranscurridos !== 1 ? 's' : ''}`;
+    tiempoTexto = `${diasTranscurridos} dia${diasTranscurridos !== 1 ? 's' : ''}`
   } else if (diasRestantes === 0) {
-    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} exacto${mesesReales !== 1 ? 's' : ''}`;
+    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} exacto${mesesReales !== 1 ? 's' : ''}`
   } else {
-    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`;
+    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}`
   }
 
-  const proximoVencimiento = obtenerFechaInicioMes(fechaInicio, monthIndex + 1);
-  const diasParaVencer = Math.ceil((proximoVencimiento - hoy) / (1000 * 60 * 60 * 24));
+  const proximoVencimiento = obtenerFechaInicioMes(fechaInicio, monthIndex + 1)
+  const diasParaVencer = Math.ceil((proximoVencimiento - hoy) / (1000 * 60 * 60 * 24))
 
   return {
     capital_original: capitalOriginal,
@@ -116,7 +116,7 @@ function calcularIntereses(prestamo, abonos) {
     }),
     dias_para_vencer: diasParaVencer,
     desglose
-  };
+  }
 }
 
-module.exports = { calcularIntereses, ahoraCol, obtenerFechaInicioMes };
+export { calcularIntereses, ahoraCol, obtenerFechaInicioMes }

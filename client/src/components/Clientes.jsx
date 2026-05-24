@@ -1,4 +1,5 @@
 import { useState, useEffect, memo } from 'react';
+import { api } from '../utils/api';
 
 const Clientes = memo(function Clientes() {
   const [clientes, setClientes] = useState([]);
@@ -10,16 +11,11 @@ const Clientes = memo(function Clientes() {
     nombre: '', telefono: '', notas: ''
   });
 
-  const token = localStorage.getItem('token');
-
   // ── Cargar clientes ──
   const cargarClientes = async () => {
     try {
       setCargando(true);
-      const res = await fetch('/api/clientes', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await api.getClientes();
       setClientes(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error al cargar clientes:', error);
@@ -52,18 +48,11 @@ const Clientes = memo(function Clientes() {
   const guardar = async () => {
     if (!form.nombre.trim()) return;
     try {
-      const url = clienteEditando
-        ? `/api/clientes/${clienteEditando.id}`
-        : '/api/clientes';
-      const method = clienteEditando ? 'PUT' : 'POST';
-      await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(form)
-      });
+      if (clienteEditando) {
+        await api.updateCliente(clienteEditando.id, form);
+      } else {
+        await api.createCliente(form);
+      }
       setMostrarFormulario(false);
       cargarClientes();
     } catch (error) {
@@ -74,10 +63,7 @@ const Clientes = memo(function Clientes() {
   // ── Eliminar ──
   const eliminar = async (id) => {
     try {
-      await fetch(`/api/clientes/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.deleteCliente(id);
       setConfirmarEliminar(null);
       cargarClientes();
     } catch (error) {
@@ -86,36 +72,20 @@ const Clientes = memo(function Clientes() {
   };
 
   // ── Descargar estado de cuenta ──
-  const verEstadoCuenta = async (clienteId, nombre) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No hay token de autenticación');
-      return;
-    }
+  const verEstadoCuenta = async (clienteId) => {
     const ventana = window.open('', '_blank');
     if (!ventana) {
-      alert('Permite las ventanas emergentes para ver el estado de cuenta.');
-      return;
+      alert('Permite las ventanas emergentes para ver el estado de cuenta.')
+      return
     }
-    ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:#666;">Cargando estado de cuenta...</p>');
+    ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:#666;">Cargando estado de cuenta...</p>')
     try {
-      const res = await fetch(
-        `/api/clientes/${clienteId}/estado-cuenta`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const contentType = res.headers.get('content-type');
-      if (!res.ok || !contentType?.includes('text/html')) {
-        const error = await res.json().catch(() => ({ mensaje: 'Error desconocido' }));
-        ventana.document.write(`<p style="font-family:sans-serif;padding:2em;color:red;">Error: ${error.mensaje || 'No se pudo generar el estado de cuenta.'}</p>`);
-        console.error('Error:', error.mensaje);
-        return;
-      }
-      const html = await res.text();
-      ventana.document.write(html);
-      ventana.document.close();
+      const html = await api.getClienteEstadoCuenta(clienteId)
+      ventana.document.write(html)
+      ventana.document.close()
     } catch (error) {
-      ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:red;">Error al generar el estado de cuenta.</p>');
-      console.error('Error al generar estado de cuenta:', error);
+      ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:red;">Error al generar el estado de cuenta.</p>')
+      console.error('Error al generar estado de cuenta:', error)
     }
   };
 

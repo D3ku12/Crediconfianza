@@ -1,13 +1,15 @@
-const { pool } = require('./db');
-const bcrypt = require('bcryptjs');
-require('dotenv').config();
+import 'dotenv/config'
+import bcrypt from 'bcrypt'
+import db from './db.js'
+
+const { pool } = db
 
 async function runSeed() {
-  console.log('Iniciando la creación de tablas en la base de datos...');
-  
-  const client = await pool.connect();
+  console.log('Iniciando la creacion de tablas en la base de datos...')
+
+  const client = await pool.connect()
   try {
-    await client.query('BEGIN');
+    await client.query('BEGIN')
 
     // 1. Crear tabla usuarios
     await client.query(`
@@ -19,8 +21,8 @@ async function runSeed() {
         es_admin BOOLEAN DEFAULT FALSE,
         creado_en TIMESTAMP DEFAULT NOW()
       );
-    `);
-    console.log('Tabla "usuarios" verificada/creada.');
+    `)
+    console.log('Tabla "usuarios" verificada/creada.')
 
     // 2. Crear tabla prestamos
     await client.query(`
@@ -35,8 +37,8 @@ async function runSeed() {
         activo BOOLEAN DEFAULT TRUE,
         creado_en TIMESTAMP DEFAULT NOW()
       );
-    `);
-    console.log('Tabla "prestamos" verificada/creada.');
+    `)
+    console.log('Tabla "prestamos" verificada/creada.')
 
     // 3. Crear tabla abonos
     await client.query(`
@@ -49,41 +51,39 @@ async function runSeed() {
         nota TEXT,
         creado_en TIMESTAMP DEFAULT NOW()
       );
-    `);
-    console.log('Tabla "abonos" verificada/creada.');
+    `)
+    console.log('Tabla "abonos" verificada/creada.')
 
-    // 4. Crear administrador inicial si se provee información
-    const adminName = process.env.ADMIN_NAME || 'JOHAN HUERTAS';
-    const adminUsername = process.env.ADMIN_USERNAME || 'stevenhm03@gmail.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Jh9@mN2sTy';
+    // 4. Crear administrador inicial si se provee informacion
+    const adminName = process.env.ADMIN_NAME || 'JOHAN HUERTAS'
+    const adminUsername = process.env.ADMIN_USERNAME || 'stevenhm03@gmail.com'
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Jh9@mN2sTy'
 
     if (adminName && adminUsername && adminPassword) {
-      // Verificar si el usuario ya existe
-      const userCheck = await client.query('SELECT * FROM usuarios WHERE username = $1', [adminUsername]);
+      const userCheck = await client.query('SELECT * FROM usuarios WHERE username = $1', [adminUsername])
       if (userCheck.rows.length === 0) {
-        const hash = await bcrypt.hash(adminPassword, 10);
+        const hash = await bcrypt.hash(adminPassword, 10)
         await client.query(
           'INSERT INTO usuarios (nombre_usuario, username, password_hash, es_admin) VALUES ($1, $2, $3, $4)',
           [adminName, adminUsername, hash, true]
-        );
-        console.log(`Usuario administrador inicial "${adminUsername}" creado con éxito.`);
+        )
+        console.log(`Usuario administrador inicial "${adminUsername}" creado con exito.`)
       } else {
-        console.log(`El usuario administrador "${adminUsername}" ya existe en la base de datos.`);
+        console.log(`El usuario administrador "${adminUsername}" ya existe en la base de datos.`)
       }
     } else {
-      console.log('No se suministraron credenciales de ADMIN por variables de entorno para crear el usuario inicial.');
-      console.log('Esperando a que el usuario provea sus datos en el chat para insertarlos manualmente en el script.');
+      console.log('No se suministraron credenciales de ADMIN por variables de entorno para crear el usuario inicial.')
     }
 
-    await client.query('COMMIT');
-    console.log('Base de datos inicializada de forma exitosa.');
+    await client.query('COMMIT')
+    console.log('Base de datos inicializada de forma exitosa.')
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error al inicializar la base de datos:', error);
+    await client.query('ROLLBACK')
+    console.error('Error al inicializar la base de datos:', error)
   } finally {
-    client.release();
-    pool.end();
+    client.release()
+    pool.end()
   }
 }
 
-runSeed();
+runSeed()
