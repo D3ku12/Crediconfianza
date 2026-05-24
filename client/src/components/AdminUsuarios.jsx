@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
-import { User, Lock, Shield, Users, FolderPlus, Trash2, UserPlus, Link2 } from 'lucide-react';
+import { User, Lock, Shield, Users, FolderPlus, Trash2, UserPlus, Link2, Wrench } from 'lucide-react';
 
 export default function AdminUsuarios() {
   const toast = useToast();
@@ -20,6 +20,9 @@ export default function AdminUsuarios() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(null);
+  const [repairUserId, setRepairUserId] = useState('');
+  const [reparando, setReparando] = useState(false);
+  const [repairResult, setRepairResult] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -111,6 +114,22 @@ export default function AdminUsuarios() {
       setError(err.message || 'Error al registrar el usuario.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRepairPrestamos = async () => {
+    if (!repairUserId) return;
+    setReparando(true);
+    setRepairResult(null);
+    try {
+      const res = await api.repairPrestamos(parseInt(repairUserId));
+      setRepairResult(res.reparados);
+      toast(res.mensaje, 'exito');
+    } catch (err) {
+      toast(err.message || 'Error al reparar préstamos', 'error');
+      setRepairResult(0);
+    } finally {
+      setReparando(false);
     }
   };
 
@@ -262,6 +281,41 @@ export default function AdminUsuarios() {
           </div>
           <button type="submit" className="btn btn-primary w-full" disabled={submitting} style={{ minHeight: '44px' }}>{submitting ? 'Registrando...' : 'Crear Usuario'}</button>
         </form>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem' }}>
+          <Wrench size={20} className="text-yellow" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: '700' }}>Herramientas</h3>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ flex: '1', minWidth: '250px' }}>
+            <label htmlFor="repair-user" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'block' }}>
+              Reparar préstamos huérfanos (sin usuario asignado)
+            </label>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              Asigna todos los préstamos con <code>usuario_id = NULL</code> al usuario seleccionado.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <select id="repair-user" className="form-control" value={repairUserId} onChange={(e) => setRepairUserId(e.target.value)} style={{ flex: 1, minHeight: '44px', fontSize: '0.9rem' }}>
+                <option value="">Seleccionar usuario...</option>
+                {usuarios.map((u) => (
+                  <option key={u.id} value={u.id}>{u.nombre_usuario} (@{u.username})</option>
+                ))}
+              </select>
+              <button className="btn btn-primary" onClick={handleRepairPrestamos} disabled={!repairUserId || reparando} style={{ minHeight: '44px', whiteSpace: 'nowrap' }}>
+                {reparando ? 'Reparando...' : '🔧 Reparar'}
+              </button>
+            </div>
+            {repairResult !== null && (
+              <div style={{ marginTop: '0.75rem', padding: '0.65rem 1rem', borderRadius: '0.75rem', background: repairResult > 0 ? 'var(--success-bg)' : 'var(--color-accent-soft)', border: `1px solid ${repairResult > 0 ? 'var(--success-border)' : 'var(--color-border)'}` }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: repairResult > 0 ? 'var(--success)' : 'var(--text-secondary)' }}>
+                  {repairResult > 0 ? `✅ ${repairResult} préstamo(s) reparado(s) correctamente` : 'ℹ️ No se encontraron préstamos huérfanos'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {confirm && <ModalConfirm mensaje={confirm.mensaje} onConfirmar={confirm.onConfirmar} onCancelar={confirm.onCancelar} />}

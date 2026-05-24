@@ -69,6 +69,11 @@ export const api = {
       method: 'DELETE',
     }),
 
+  repairPrestamos: (userId) =>
+    request(`/api/prestamos/reparar/${userId}`, {
+      method: 'PATCH',
+    }),
+
   // Abonos
   createAbono: (abono) => 
     request('/api/abonos', {

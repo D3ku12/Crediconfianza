@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('./db');
 const { authenticateToken, requireAdmin, JWT_SECRET } = require('./middleware/auth');
+const { calcularIntereses } = require('./utils/calcularIntereses');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
@@ -326,134 +327,6 @@ async function getSharedUserIds(userId, client = db) {
   }
   return [userId];
 }
-
-// --- Helper: Hora actual en Colombia (UTC-5) ---
-function ahoraCol() {
-  const ahora = new Date();
-  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000;
-  const colMs = utcMs - 5 * 3600000;
-  const colDate = new Date(colMs);
-  return new Date(colDate.getFullYear(), colDate.getMonth(), colDate.getDate());
-}
-
-// --- Helper: Obtener inicio del mes para un préstamo (respetando día exacto) ---
-function obtenerFechaInicioMes(fechaBase, mesesSumar) {
-  const [y, m, d] = [fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate()];
-  const v = new Date(y, m + mesesSumar, d);
-  if (v.getDate() !== d) {
-    v.setDate(0);
-  }
-  v.setHours(0, 0, 0, 0);
-  return v;
-}
-
-// --- Lógica CORRECTA de Cálculo de Intereses (mes a mes sobre capital vigente) ---
-function calcularIntereses(prestamo, abonos) {
-  const capitalOriginal = parseFloat(prestamo.capital_original);
-  const tasa = parseFloat(prestamo.tasa_interes);
-  const fechaInicio = new Date(prestamo.fecha_inicio);
-  fechaInicio.setHours(0, 0, 0, 0);
-
-  const hoy = ahoraCol();
-
-  // Ordenar abonos a capital por fecha ASC
-  const abonosCapital = (abonos || [])
-    .filter(a => a.tipo === 'capital')
-    .map(a => {
-      const f = new Date(a.fecha);
-      f.setHours(0, 0, 0, 0);
-      return { monto: parseFloat(a.monto), fecha: f };
-    })
-    .sort((a, b) => a.fecha - b.fecha);
-
-  const totalAbonoCapital = abonosCapital.reduce((s, a) => s + a.monto, 0);
-  const totalAbonoInteres = (abonos || [])
-    .filter(a => a.tipo === 'interes')
-    .reduce((s, a) => s + parseFloat(a.monto), 0);
-
-  // Recorrer mes a mes desde fecha_inicio hasta hoy
-  let totalInteresGenerado = 0;
-  const desglose = [];
-  let monthIndex = 0;
-  let monthStart = obtenerFechaInicioMes(fechaInicio, 0);
-
-  while (monthStart < hoy) {
-    const monthEnd = obtenerFechaInicioMes(fechaInicio, monthIndex + 1);
-
-    // Capital vigente = capital_original - suma de abonos a capital ANTERIORES a este mes
-    let sumAbonosBeforeThisMonth = 0;
-    for (const ab of abonosCapital) {
-      if (ab.fecha < monthStart) {
-        sumAbonosBeforeThisMonth += ab.monto;
-      }
-    }
-    const capitalEsteMes = Math.max(0, capitalOriginal - sumAbonosBeforeThisMonth);
-
-    // Si el capital llegó a 0, los siguientes meses no generan interés
-    if (capitalEsteMes <= 0) break;
-
-    const interesEsteMes = capitalEsteMes * (tasa / 100);
-    totalInteresGenerado += interesEsteMes;
-
-    desglose.push({
-      mes: monthIndex + 1,
-      inicio: monthStart.toISOString().substring(0, 10),
-      fin: monthEnd < hoy ? monthEnd.toISOString().substring(0, 10) : hoy.toISOString().substring(0, 10),
-      capital: Math.round(capitalEsteMes * 100) / 100,
-      interes: Math.round(interesEsteMes * 100) / 100,
-      abonosCapitalEsteMes: abonosCapital
-        .filter(ab => ab.fecha >= monthStart && ab.fecha < monthEnd)
-        .map(ab => ab.monto)
-    });
-
-    monthIndex++;
-    monthStart = obtenerFechaInicioMes(fechaInicio, monthIndex);
-  }
-
-  const capitalPendiente = Math.max(0, capitalOriginal - totalAbonoCapital);
-  const interesPendiente = Math.max(0, totalInteresGenerado - totalAbonoInteres);
-  const interesMensualActual = capitalPendiente > 0 ? capitalPendiente * (tasa / 100) : 0;
-
-  // Tiempo transcurrido (informativo)
-  const diasTranscurridos = Math.floor((hoy - fechaInicio) / (1000 * 60 * 60 * 24));
-  const mesesReales = Math.floor(diasTranscurridos / 30);
-  const diasRestantes = diasTranscurridos % 30;
-
-  let tiempoTexto = '';
-  if (diasTranscurridos === 0) {
-    tiempoTexto = 'hoy';
-  } else if (mesesReales === 0) {
-    tiempoTexto = `${diasTranscurridos} día${diasTranscurridos !== 1 ? 's' : ''}`;
-  } else if (diasRestantes === 0) {
-    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} exacto${mesesReales !== 1 ? 's' : ''}`;
-  } else {
-    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`;
-  }
-
-  // Próximo vencimiento
-  const proximoVencimiento = obtenerFechaInicioMes(fechaInicio, monthIndex + 1);
-  const diasParaVencer = Math.ceil((proximoVencimiento - hoy) / (1000 * 60 * 60 * 24));
-
-  return {
-    capital_original: capitalOriginal,
-    capital_pendiente: capitalPendiente,
-    tasa_interes: tasa,
-    interes_mensual_actual: Math.round(interesMensualActual * 100) / 100,
-    total_intereses_generados: Math.round(totalInteresGenerado * 100) / 100,
-    total_intereses_pagados: totalAbonoInteres,
-    interes_pendiente: Math.round(interesPendiente * 100) / 100,
-    total_abonado_capital: totalAbonoCapital,
-    dias_transcurridos: diasTranscurridos,
-    tiempo_texto: tiempoTexto,
-    proximo_vencimiento: proximoVencimiento.toLocaleDateString('es-CO', {
-      day: '2-digit', month: 'long', year: 'numeric'
-    }),
-    dias_para_vencer: diasParaVencer,
-    desglose
-  };
-}
-
-
 
 
 // ==========================================
@@ -1120,10 +993,28 @@ app.post('/api/prestamos', apiLimiter, authenticateToken, invalidateCache, valid
 });
 
 
+// PATCH /api/prestamos/reparar/:uid -> Reparar préstamos huérfanos (admin)
+app.patch('/api/prestamos/reparar/:uid', authenticateToken, requireAdmin, async (req, res) => {
+  const { uid } = req.params;
+  try {
+    const result = await db.query(
+      "UPDATE prestamos SET usuario_id = $1 WHERE usuario_id IS NULL RETURNING id",
+      [parseInt(uid)]
+    );
+    res.json({
+      mensaje: `Préstamos reparados: ${result.rows.length}`,
+      reparados: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error al reparar préstamos:', error);
+    res.status(500).json({ mensaje: 'Error al reparar préstamos.' });
+  }
+});
+
 // PUT /api/prestamos/:id -> Editar préstamo
 app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, res) => {
   const { id } = req.params;
-  const { deudor, capital_original, tasa_interes, fecha_inicio } = req.body;
+  const { deudor, capital_original, tasa_interes, fecha_inicio, capital_pendiente, activo, concepto } = req.body;
   
   const client = await db.pool.connect();
   try {
@@ -1131,7 +1022,7 @@ app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, re
     
     // Verificar que el préstamo pertenece al grupo del usuario
     const userIds = await getSharedUserIds(req.user.id, client);
-    const loanCheck = await client.query('SELECT capital_original, capital_pendiente FROM prestamos WHERE id = $1 AND usuario_id = ANY($2)', [id, userIds]);
+    const loanCheck = await client.query('SELECT * FROM prestamos WHERE id = $1 AND usuario_id = ANY($2)', [id, userIds]);
     if (loanCheck.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ mensaje: 'Préstamo no encontrado.' });
@@ -1143,8 +1034,15 @@ app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, re
     const newOriginal = parseFloat(capital_original);
     const diferencia = newOriginal - oldOriginal;
     
-    // Si incrementa el préstamo, verificar fondos en caja del grupo
-    if (diferencia > 0) {
+    // Si se proporciona capital_pendiente explícitamente, usarlo
+    const newPendiente = capital_pendiente !== undefined
+      ? Math.max(0, parseFloat(capital_pendiente))
+      : Math.max(0, oldPendiente + diferencia);
+    
+    const esActivo = activo !== undefined ? !!activo : newPendiente > 0;
+    
+    // Si incrementa el préstamo (y no se dio capital_pendiente explícito), verificar fondos en caja del grupo
+    if (diferencia > 0 && capital_pendiente === undefined) {
       const saldoRes = await client.query(
         'SELECT COALESCE(SUM(monto), 0) AS saldo FROM transacciones_caja WHERE usuario_id = ANY($1)',
         [userIds]
@@ -1158,14 +1056,11 @@ app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, re
       }
     }
 
-    const newPendiente = Math.max(0, oldPendiente + diferencia);
-    const esActivo = newPendiente > 0;
-    
     await client.query(
       `UPDATE prestamos 
-       SET deudor = $1, capital_original = $2, capital_pendiente = $3, tasa_interes = $4, fecha_inicio = $5, activo = $6
-       WHERE id = $7`,
-      [deudor, newOriginal, newPendiente, parseFloat(tasa_interes), fecha_inicio, esActivo, id]
+       SET deudor = $1, capital_original = $2, capital_pendiente = $3, tasa_interes = $4, fecha_inicio = $5, activo = $6, concepto = COALESCE($7, concepto)
+       WHERE id = $8`,
+      [deudor, newOriginal, newPendiente, parseFloat(tasa_interes), fecha_inicio, esActivo, concepto || null, id]
     );
 
     // Actualizar la transacción en caja correspondiente
@@ -1177,7 +1072,8 @@ app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, re
     );
     
     await client.query('COMMIT');
-    res.json({ mensaje: 'Préstamo actualizado con éxito.' });
+    const updated = await db.query('SELECT * FROM prestamos WHERE id = $1', [id]);
+    res.json(updated.rows[0]);
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al editar préstamo:', error);

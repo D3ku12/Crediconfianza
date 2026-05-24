@@ -23,6 +23,9 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [capitalDisplay, setCapitalDisplay] = useState('');
   const [tasaInteres, setTasaInteres] = useState('20');
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0]);
+  const [capitalPendienteDisplay, setCapitalPendienteDisplay] = useState('');
+  const [concepto, setConcepto] = useState('');
+  const [estadoActivo, setEstadoActivo] = useState(true);
   const [modalError, setModalError] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -65,8 +68,11 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setDeudor('');
     setClienteSeleccionado('');
     setCapitalDisplay('');
+    setCapitalPendienteDisplay('');
     setTasaInteres('20');
     setFechaInicio(new Date().toISOString().split('T')[0]);
+    setConcepto('');
+    setEstadoActivo(true);
     setModalError('');
     setIsModalOpen(true);
     setEditingLoanId(null);
@@ -88,12 +94,18 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     try {
       let result;
       if (editingLoanId) {
-        result = await api.updatePrestamo(editingLoanId, {
+        const body = {
           deudor,
           capital_original: capitalNumerico,
           tasa_interes: parseFloat(tasaInteres),
           fecha_inicio: fechaInicio,
-        });
+          concepto: concepto || null,
+        };
+        if (capitalPendienteDisplay) {
+          body.capital_pendiente = limpiar(capitalPendienteDisplay);
+        }
+        body.activo = estadoActivo;
+        result = await api.updatePrestamo(editingLoanId, body);
         toast('Préstamo actualizado con éxito', 'exito');
       } else {
         const clienteSel = clientes.find(c => c.id === parseInt(clienteSeleccionado));
@@ -125,8 +137,11 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setDeudor(loan.deudor);
     setClienteSeleccionado(loan.cliente_id ? String(loan.cliente_id) : '');
     setCapitalDisplay(String(loan.capital_original).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
+    setCapitalPendienteDisplay(String(loan.capital_pendiente).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
     setTasaInteres(loan.tasa_interes.toString());
     setFechaInicio(loan.fecha_inicio.split('T')[0]);
+    setConcepto(loan.concepto || '');
+    setEstadoActivo(parseFloat(loan.capital_pendiente) > 0);
     setModalError('');
     setEditingLoanId(loan.id);
     setIsModalOpen(true);
@@ -283,10 +298,20 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     </div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Capital</span><span style={{ fontWeight: '600' }}>{formatCOP(loan.capital_original)}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Pendiente</span><span className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.capital_pendiente)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Mensual</span><span style={{ fontWeight: '600' }}>{formatCOP(loan.interes_mensual)}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Mensual</span><span className={loan.interes_mensual > 0 ? 'text-green' : ''} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_mensual)}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Cobrados</span><span className="text-green" style={{ fontWeight: '600' }}>{formatCOP(loan.total_abonado_interes)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Tiempo</span><span style={{ fontWeight: '500' }}>{loan.tasa_interes}% · {loan.tiempo_texto}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Tiempo</span><span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {parseFloat(loan.tasa_interes) === 0
+                        ? <><span className="badge warning" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>⚠ Sin interés</span></>
+                        : <>{loan.tasa_interes}%</>
+                      }
+                      <span style={{ color: 'var(--text-muted)' }}>·</span>
+                      <span>{loan.tiempo_texto === 'Sin calcular'
+                        ? `${Math.floor((new Date() - new Date(loan.fecha_inicio)) / (1000 * 60 * 60 * 24 * 30)) || 0} mes(es)`
+                        : loan.tiempo_texto
+                      }</span>
+                    </span></div>
                   </div>
                   {/* Próximo vencimiento */}
                   {loan.proximo_vencimiento && (
@@ -394,10 +419,13 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                             <td style={{ fontWeight: '600' }}>{loan.deudor}</td>
                             <td>{formatCOP(loan.capital_original)}</td>
                             <td className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.capital_pendiente)}</td>
-                            <td className={loan.interes_mensual > 0 ? 'text-yellow' : ''} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_mensual)}</td>
+                            <td className={loan.interes_mensual > 0 ? 'text-green' : ''} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_mensual)}</td>
                             <td className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_pendiente)}</td>
                             <td className="text-green" style={{ fontWeight: '500' }}>{formatCOP(loan.total_abonado_interes)}</td>
-                            <td>{loan.tasa_interes}%</td>
+                            <td>{parseFloat(loan.tasa_interes) === 0
+                              ? <span className="badge warning" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>⚠ Sin interés</span>
+                              : <>{loan.tasa_interes}%</>
+                            }</td>
                             <td style={{ fontSize: '12px' }}>{formatFecha(loan.fecha_inicio)}</td>
                             <td><span className={`badge ${isActivo ? 'danger' : 'success'}`}>{isActivo ? 'Activo' : 'Pagado'}</span></td>
                             <td>
@@ -558,6 +586,28 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     <input id="modal-fecha" type="date" className="form-control" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
                   </div>
                 </div>
+
+                {editingLoanId && (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="modal-capital-pendiente">Capital Pendiente</label>
+                      <div style={{ position: 'relative' }}>
+                        <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                        <input id="modal-capital-pendiente" type="text" inputMode="decimal" className="form-control" placeholder="monto pendiente" value={capitalPendienteDisplay} onChange={(e) => setCapitalPendienteDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label htmlFor="modal-concepto">Concepto</label>
+                      <input id="modal-concepto" type="text" className="form-control" placeholder="Ej: Préstamo para negocio" value={concepto} onChange={(e) => setConcepto(e.target.value)} style={{ width: '100%' }} disabled={creating} />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontWeight: '500', minHeight: '44px' }}>
+                        <input type="checkbox" checked={estadoActivo} onChange={(e) => setEstadoActivo(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '18px', height: '18px' }} disabled={creating} />
+                        <span>Préstamo activo</span>
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="modal-footer">
