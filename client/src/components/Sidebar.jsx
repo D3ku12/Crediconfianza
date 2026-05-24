@@ -1,10 +1,11 @@
 import React from 'react';
-import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet } from 'lucide-react';
+import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, User } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
   const menuItems = [
     { id: 'resumen', label: 'Resumen', icon: BarChart3 },
     { id: 'prestamos', label: 'Préstamos', icon: CircleDollarSign },
+    { id: 'clientes', label: 'Clientes', icon: User },
     { id: 'abonos', label: 'Abonos', icon: Receipt },
     { id: 'caja', label: 'Caja', icon: Wallet },
   ];

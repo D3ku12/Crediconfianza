@@ -4,7 +4,7 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, Edit, Trash2, BookOpen } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, Edit, Trash2, BookOpen, FileText } from 'lucide-react';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const toast = useToast();
@@ -167,6 +167,23 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setActiveTab('abonos');
   };
 
+  const verEstadoCuenta = async (loanId, deudor) => {
+    const token = localStorage.getItem('token');
+    const ventana = window.open('', '_blank');
+    if (!ventana) { alert('Permite ventanas emergentes para ver el estado de cuenta.'); return; }
+    ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:#666;">Cargando...</p>');
+    try {
+      const res = await fetch(`/api/prestamos/${loanId}/estado-cuenta`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const html = await res.text();
+      ventana.document.write(html);
+      ventana.document.close();
+    } catch (err) {
+      ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:red;">Error al generar estado de cuenta.</p>');
+    }
+  };
+
   const capitalNumerico = limpiar(capitalDisplay);
   const tasaNum = parseFloat(tasaInteres) || 0;
   const interesMensualPreview = capitalNumerico * tasaNum / 100;
@@ -263,6 +280,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                     {isActivo && <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1, minHeight: '44px' }}><Receipt size={14} /> Abonar</button>}
+                    <button className="btn btn-secondary btn-small" onClick={() => verEstadoCuenta(loan.id, loan.deudor)} style={{ minHeight: '44px', minWidth: '44px' }} title="Estado de cuenta"><FileText size={14} /></button>
                     <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
                     <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
                     <button onClick={() => handleToggleExpand(loan.id)} className="btn btn-secondary btn-small" style={{ minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
@@ -336,6 +354,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                             <td>
                               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 {isActivo && <button className="btn btn-secondary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ minHeight: '44px' }} title="Registrar Abono" aria-label="Registrar abono"><Receipt size={14} /></button>}
+                                <button className="btn btn-secondary btn-small" onClick={() => verEstadoCuenta(loan.id, loan.deudor)} style={{ minHeight: '44px', minWidth: '44px' }} title="Estado de cuenta"><FileText size={14} /></button>
                                 <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} title="Editar" aria-label="Editar préstamo"><Edit size={14} /></button>
                                 <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} title="Eliminar" aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
                               </div>

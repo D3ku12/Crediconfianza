@@ -258,6 +258,36 @@ async function initializeDatabase() {
       );
     `);
 
+    // Tabla de clientes
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS clientes (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+        nombre VARCHAR(150) NOT NULL,
+        telefono VARCHAR(20),
+        email VARCHAR(100),
+        documento VARCHAR(30),
+        notas TEXT,
+        creado_en TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Migración: agregar cliente_id y concepto a prestamos
+    try {
+      await client.query(`
+        ALTER TABLE prestamos 
+        ADD COLUMN IF NOT EXISTS cliente_id 
+        INTEGER REFERENCES clientes(id) ON DELETE SET NULL
+      `);
+    } catch (e) { /* ignorar si ya existe */ }
+
+    try {
+      await client.query(`
+        ALTER TABLE prestamos
+        ADD COLUMN IF NOT EXISTS concepto TEXT
+      `);
+    } catch (e) { /* ignorar si ya existe */ }
+
     // Crear admin inicial si no existe
     const adminName = process.env.ADMIN_NAME || 'JOHAN HUERTAS';
     const adminUsername = process.env.ADMIN_USERNAME || 'stevenhm03@gmail.com';
@@ -297,60 +327,104 @@ async function getSharedUserIds(userId, client = db) {
   return [userId];
 }
 
-// --- Lógica de Cálculo de Interés (Interés Inicial + Mensual con Día de Gracia) ---
-/**
- * Calcula el interés acumulado de un préstamo.
- * - Cobra 1 mes de interés inicial desde el día 0.
- * - El día exacto de vencimiento (30, 60, 90...)
- *   es día de gracia: no se cobra el mes siguiente.
- * - Desde el día 31 en adelante se acumula 1 mes
- *   adicional por cada 30 días cumplidos.
- */
+// --- Lógica de Cálculo de Interés (Día Exacto del Mes Calendario) ---
 function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
-  const fechaInicio = new Date(fechaInicioStr);
+  const [y, m, d] = fechaInicioStr.split('T')[0].split('-').map(Number);
+  const fechaInicio = new Date(y, m - 1, d);
   const hoy = new Date();
 
   fechaInicio.setHours(0, 0, 0, 0);
   hoy.setHours(0, 0, 0, 0);
 
-  const dias = Math.floor((hoy - fechaInicio) / (1000 * 60 * 60 * 24));
   const capital = parseFloat(capitalPendiente);
   const tasa = parseFloat(tasaMensual);
   const interesMensual = capital * (tasa / 100);
 
-  const mesesAdicionales = dias <= 0 ? 0 : Math.floor((dias - 1) / 30);
-  const totalMeses = 1 + mesesAdicionales;
+  // Día del mes en que se creó el préstamo
+  const diaOrigen = fechaInicio.getDate();
+
+  // Función para obtener el próximo vencimiento mensual
+  // respetando el día exacto de origen y el día de gracia
+  function obtenerVencimiento(fechaBase, mesesSumar) {
+    const v = new Date(fechaBase);
+    v.setMonth(v.getMonth() + mesesSumar);
+
+    // Si el mes destino no tiene ese día (ej: 31 en febrero)
+    // retrocede al último día válido del mes
+    if (v.getDate() !== diaOrigen) {
+      v.setDate(0);
+    }
+    return v;
+  }
+
+  // Contar cuántos meses calendario han vencido
+  // con día de gracia: el día exacto de vencimiento
+  // aún no cuenta el siguiente período
+  let mesesVencidos = 0;
+  let fechaVencimiento = obtenerVencimiento(fechaInicio, 1);
+
+  // Mientras el vencimiento del siguiente mes
+  // sea ANTES de hoy (no igual, eso es gracia)
+  while (fechaVencimiento < hoy) {
+    mesesVencidos++;
+    fechaVencimiento = obtenerVencimiento(fechaInicio, mesesVencidos + 1);
+  }
+
+  // Total = interés inicial + meses vencidos
+  const totalMeses = 1 + mesesVencidos;
   const interesAcumulado = interesMensual * totalMeses;
 
-  // Construir descripción natural del tiempo transcurrido
-  const mesesReales = Math.floor(dias / 30);
-  const diasRestantes = dias % 30;
+  // Días transcurridos para el label informativo
+  const diasTranscurridos = Math.floor(
+    (hoy - fechaInicio) / (1000 * 60 * 60 * 24)
+  );
 
-  let tiempoDescripcion = '';
-  if (dias === 0) {
-    tiempoDescripcion = 'hoy';
+  // Próxima fecha de vencimiento
+  const proximoVencimiento = obtenerVencimiento(
+    fechaInicio, totalMeses
+  );
+
+  // Días para el próximo vencimiento
+  const diasParaVencer = Math.ceil(
+    (proximoVencimiento - hoy) / (1000 * 60 * 60 * 24)
+  );
+
+  // Label de tiempo transcurrido natural
+  const mesesReales = Math.floor(diasTranscurridos / 30);
+  const diasRestantes = diasTranscurridos % 30;
+
+  let tiempoTexto = '';
+  if (diasTranscurridos === 0) {
+    tiempoTexto = 'hoy';
   } else if (mesesReales === 0) {
-    tiempoDescripcion = `${dias} día${dias !== 1 ? 's' : ''}`;
+    tiempoTexto = `${diasTranscurridos} día${diasTranscurridos !== 1 ? 's' : ''}`;
   } else if (diasRestantes === 0) {
-    tiempoDescripcion = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} exacto${mesesReales !== 1 ? 's' : ''}`;
+    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} exacto${mesesReales !== 1 ? 's' : ''}`;
   } else {
-    tiempoDescripcion = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`;
+    tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`;
   }
 
-  // Construir label base con "tiempos" en vez de "meses"
-  let labelBase = '';
-  if (mesesAdicionales === 0) {
-    labelBase = 'Interés inicial';
-  } else {
-    labelBase = `Interés inicial + ${mesesAdicionales} tiempo${mesesAdicionales !== 1 ? 's' : ''}`;
-  }
+  const labelBase = mesesVencidos === 0
+    ? 'Interés inicial'
+    : `Interés inicial + ${mesesVencidos} tiempo${mesesVencidos !== 1 ? 's' : ''}`;
 
-  const label = `${labelBase} (${tiempoDescripcion})`;
+  const label = `${labelBase} (${tiempoTexto})`;
 
-  // Solo el tiempo sin "Interés inicial"
-  const tiempoTexto = tiempoDescripcion;
-
-  return { dias, interesAcumulado, interesMensual, interesDiario: interesMensual / 30, mesesAdicionales, totalMeses, label, tiempoTexto };
+  return {
+    diasTranscurridos,
+    interesAcumulado,
+    interesMensual,
+    interesDiario:     interesMensual / 30,
+    mesesVencidos,
+    totalMeses,
+    tiempoTexto,
+    label,
+    proximoVencimiento: proximoVencimiento
+      .toLocaleDateString('es-CO', {
+        day: '2-digit', month: 'long', year: 'numeric'
+      }),
+    diasParaVencer,
+  };
 }
 
 
@@ -554,6 +628,323 @@ app.get('/api/deudores', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/clientes -> Listar clientes del usuario (con deuda total)
+app.get('/api/clientes', authenticateToken, async (req, res) => {
+  try {
+    const userIds = await getSharedUserIds(req.user.id);
+    const result = await db.query(
+      `SELECT c.*, 
+        COUNT(DISTINCT p.id) as total_prestamos,
+        COALESCE(SUM(p.capital_pendiente), 0) as deuda_total
+       FROM clientes c
+       LEFT JOIN prestamos p ON p.cliente_id = c.id AND p.activo = TRUE
+       WHERE c.usuario_id = ANY($1)
+       GROUP BY c.id
+       ORDER BY c.nombre ASC`,
+      [userIds]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener clientes:', error);
+    res.status(500).json({ mensaje: 'Error al obtener clientes.' });
+  }
+});
+
+// POST /api/clientes -> Crear cliente
+app.post('/api/clientes', authenticateToken, async (req, res) => {
+  const { nombre, telefono, email, documento, notas } = req.body;
+  if (!nombre?.trim()) {
+    return res.status(400).json({ mensaje: 'El nombre es requerido.' });
+  }
+  try {
+    const result = await db.query(
+      `INSERT INTO clientes 
+        (usuario_id, nombre, telefono, email, documento, notas)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [req.user.id, nombre.trim(), telefono || null,
+       email || null, documento || null, notas || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al crear cliente:', error);
+    res.status(500).json({ mensaje: 'Error al crear cliente.' });
+  }
+});
+
+// PUT /api/clientes/:id -> Actualizar cliente
+app.put('/api/clientes/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { nombre, telefono, email, documento, notas } = req.body;
+  try {
+    const userIds = await getSharedUserIds(req.user.id);
+    const result = await db.query(
+      `UPDATE clientes 
+       SET nombre=$1, telefono=$2, email=$3, documento=$4, notas=$5
+       WHERE id=$6 AND usuario_id = ANY($7) RETURNING *`,
+      [nombre, telefono||null, email||null,
+       documento||null, notas||null, id, userIds]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar cliente:', error);
+    res.status(500).json({ mensaje: 'Error al actualizar cliente.' });
+  }
+});
+
+// DELETE /api/clientes/:id -> Eliminar cliente
+app.delete('/api/clientes/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const userIds = await getSharedUserIds(req.user.id);
+    await db.query(
+      'UPDATE prestamos SET cliente_id = NULL WHERE cliente_id = $1',
+      [id]
+    );
+    const result = await db.query(
+      'DELETE FROM clientes WHERE id=$1 AND usuario_id=ANY($2) RETURNING id',
+      [id, userIds]
+    );
+    if (result.rows.length === 0)
+      return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
+    res.json({ mensaje: 'Cliente eliminado.' });
+  } catch (error) {
+    console.error('Error al eliminar cliente:', error);
+    res.status(500).json({ mensaje: 'Error al eliminar cliente.' });
+  }
+});
+
+// GET /api/clientes/:id/estado-cuenta -> HTML imprimible / PDF vía navegador
+app.get('/api/clientes/:id/estado-cuenta', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const userIds = await getSharedUserIds(req.user.id);
+
+    const clienteRes = await db.query(
+      'SELECT * FROM clientes WHERE id=$1 AND usuario_id=ANY($2)',
+      [id, userIds]
+    );
+    if (clienteRes.rows.length === 0)
+      return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
+    const cliente = clienteRes.rows[0];
+
+    const prestamosRes = await db.query(
+      'SELECT * FROM prestamos WHERE cliente_id=$1 ORDER BY fecha_inicio ASC',
+      [id]
+    );
+    const prestamos = prestamosRes.rows;
+
+    const abonosRes = await db.query(
+      `SELECT a.*, p.concepto
+       FROM abonos a
+       JOIN prestamos p ON a.prestamo_id = p.id
+       WHERE p.cliente_id = $1
+       ORDER BY a.fecha ASC`,
+      [id]
+    );
+    const abonos = abonosRes.rows;
+
+    const deudaOriginal = prestamos.reduce(
+      (s, p) => s + parseFloat(p.capital_original), 0
+    );
+    const deudaRestante = prestamos
+      .filter(p => p.activo)
+      .reduce((s, p) => s + parseFloat(p.capital_pendiente), 0);
+
+    const hoy = new Date().toLocaleDateString('es-CO', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+
+    const filas = abonos.map((a, i) => `
+      <tr style="background:${i%2===0?'#f8fafc':'#ffffff'}">
+        <td>${new Date(a.fecha).toLocaleDateString('es-CO')}</td>
+        <td>${a.nota || (a.tipo==='capital' ? 'Pago' : 'Interés')}</td>
+        <td>${a.tipo==='capital' ? 'Abono capital' : 'Abono interés'}</td>
+        <td style="text-align:right;font-weight:600;">
+          $${parseFloat(a.monto).toLocaleString('es-CO')}
+        </td>
+      </tr>
+    `).join('');
+
+    const conceptos = prestamos
+      .filter(p => p.concepto)
+      .map(p => `<p><strong>Concepto:</strong> ${p.concepto}</p>`)
+      .join('');
+
+    const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Estado de Cuenta - ${cliente.nombre}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      color: #1e293b;
+      padding: 40px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #1e3a5f;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .header h1 {
+      font-size: 22px;
+      color: #1e3a5f;
+      letter-spacing: 0.05em;
+    }
+    .header .fecha {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .seccion { margin-bottom: 24px; }
+    .seccion h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #1e3a5f;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+    .seccion p {
+      margin-bottom: 4px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    thead tr { background: #1e3a5f; color: #ffffff; }
+    thead th {
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    tbody td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    .sin-movimientos {
+      text-align: center;
+      color: #94a3b8;
+      padding: 20px;
+      font-style: italic;
+    }
+    .total-box {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .total-box .label {
+      font-size: 13px;
+      color: #0369a1;
+      font-weight: 600;
+    }
+    .total-box .monto {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .pie {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+    }
+    .btn-imprimir {
+      display: block;
+      margin: 0 auto 32px;
+      padding: 12px 32px;
+      background: #1e3a5f;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+    }
+    .btn-imprimir:hover { background: #2d5a9e; }
+    @media print {
+      .btn-imprimir { display: none !important; }
+      body { padding: 20px; }
+      .total-box { border: 1px solid #000 !important; background: #fff !important; }
+    }
+  </style>
+</head>
+<body>
+  <button class="btn-imprimir" onclick="window.print()">
+    🖨️ Imprimir / Guardar como PDF
+  </button>
+  <div class="header">
+    <h1>ESTADO DE CUENTA</h1>
+    <p class="fecha">${hoy}</p>
+  </div>
+  <div class="seccion">
+    <h2>Información</h2>
+    <p><strong>Nombre:</strong> ${cliente.nombre}</p>
+    ${cliente.documento ? `<p><strong>Documento:</strong> ${cliente.documento}</p>` : ''}
+    ${cliente.telefono ? `<p><strong>Teléfono:</strong> ${cliente.telefono}</p>` : ''}
+    ${conceptos}
+    <p><strong>Deuda original:</strong> $${deudaOriginal.toLocaleString('es-CO')}</p>
+    ${prestamos[0] ? `<p><strong>Fecha de creación:</strong> ${new Date(prestamos[0].fecha_inicio).toLocaleDateString('es-CO')}</p>` : ''}
+  </div>
+  <div class="seccion">
+    <h2>Movimientos</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Concepto</th>
+          <th>Tipo</th>
+          <th style="text-align:right">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || '<tr><td colspan="4" class="sin-movimientos">Sin movimientos registrados</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+  <div class="total-box">
+    <span class="label">Restante por pagar</span>
+    <span class="monto">$${deudaRestante.toLocaleString('es-CO')}</span>
+  </div>
+  <div class="pie">
+    Documento generado automáticamente por PrestamoExpress
+  </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+
+  } catch (error) {
+    console.error('Error al generar estado de cuenta:', error);
+    res.status(500).json({ mensaje: 'Error al generar estado de cuenta.' });
+  }
+});
+
 // ==========================================
 // RUTAS DE PRÉSTAMOS
 // ==========================================
@@ -599,8 +990,8 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
           capital_original: parseFloat(loan.capital_original),
           capital_pendiente: parseFloat(loan.capital_pendiente),
           tasa_interes: parseFloat(loan.tasa_interes),
-          dias_transcurridos: calculo.dias,
-          meses_adicionales: calculo.mesesAdicionales,
+          dias_transcurridos: calculo.diasTranscurridos,
+          meses_adicionales: calculo.mesesVencidos,
           total_meses_cobro: calculo.totalMeses,
           interes_mensual: calculo.interesMensual,
           interes_diario: calculo.interesDiario,
@@ -608,6 +999,8 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
           interes_pendiente: interesPendiente,
           tiempo_label: calculo.label,
           tiempo_texto: calculo.tiempoTexto,
+          proximo_vencimiento: calculo.proximoVencimiento,
+          dias_para_vencer: calculo.diasParaVencer,
           total_abonado_interes: totalAbonoInteres,
           total_abonado_capital: totalAbonoCapital
         };
@@ -759,6 +1152,185 @@ app.delete('/api/prestamos/:id', authenticateToken, invalidateCache, async (req,
   } catch (error) {
     console.error('Error al eliminar préstamo:', error);
     res.status(500).json({ mensaje: 'Error al eliminar préstamo.' });
+  }
+});
+
+// GET /api/prestamos/:id/estado-cuenta -> HTML imprimible de un préstamo individual
+app.get('/api/prestamos/:id/estado-cuenta', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const userIds = await getSharedUserIds(req.user.id);
+    const loanRes = await db.query(
+      'SELECT * FROM prestamos WHERE id=$1 AND usuario_id=ANY($2)',
+      [id, userIds]
+    );
+    if (loanRes.rows.length === 0)
+      return res.status(404).json({ mensaje: 'Préstamo no encontrado.' });
+    const loan = loanRes.rows[0];
+
+    const abonosRes = await db.query(
+      'SELECT * FROM abonos WHERE prestamo_id=$1 ORDER BY fecha ASC',
+      [id]
+    );
+    const abonos = abonosRes.rows;
+
+    const totalAbonoInteres = abonos
+      .filter(a => a.tipo === 'interes')
+      .reduce((sum, a) => sum + parseFloat(a.monto), 0);
+    const totalAbonoCapital = abonos
+      .filter(a => a.tipo === 'capital')
+      .reduce((sum, a) => sum + parseFloat(a.monto), 0);
+
+    const deudaOriginal = parseFloat(loan.capital_original);
+    const deudaRestante = parseFloat(loan.capital_pendiente);
+
+    const calculo = calcularInteresTotal(
+      loan.capital_pendiente, loan.tasa_interes, loan.fecha_inicio
+    );
+    const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
+
+    const hoy = new Date().toLocaleDateString('es-CO', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    });
+
+    const filas = abonos.map((a, i) => `
+      <tr style="background:${i%2===0?'#f8fafc':'#ffffff'}">
+        <td>${new Date(a.fecha).toLocaleDateString('es-CO')}</td>
+        <td>${a.nota || (a.tipo==='capital' ? 'Pago' : 'Interés')}</td>
+        <td>${a.tipo==='capital' ? 'Abono capital' : 'Abono interés'}</td>
+        <td style="text-align:right;font-weight:600;">
+          $${parseFloat(a.monto).toLocaleString('es-CO')}
+        </td>
+      </tr>
+    `).join('');
+
+    const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Estado de Cuenta - ${loan.deudor}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      color: #1e293b;
+      padding: 40px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #1e3a5f;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .header h1 { font-size: 22px; color: #1e3a5f; letter-spacing: 0.05em; }
+    .header .fecha { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .seccion { margin-bottom: 24px; }
+    .seccion h2 {
+      font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #1e3a5f; border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 6px; margin-bottom: 12px;
+    }
+    .seccion p { margin-bottom: 4px; font-size: 13px; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead tr { background: #1e3a5f; color: #ffffff; }
+    thead th { padding: 10px 12px; text-align: left; font-weight: 600; letter-spacing: 0.03em; }
+    tbody td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; }
+    tbody tr:last-child td { border-bottom: none; }
+    .sin-movimientos { text-align: center; color: #94a3b8; padding: 20px; font-style: italic; }
+    .resumen-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px;
+    }
+    .resumen-card {
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 10px; padding: 14px 18px;
+    }
+    .resumen-card .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+    .resumen-card .valor { font-size: 18px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+    .resumen-card .valor.danger { color: #dc2626; }
+    .resumen-card .valor.success { color: #16a34a; }
+    .pie {
+      margin-top: 40px; text-align: center; font-size: 11px;
+      color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px;
+    }
+    .btn-imprimir {
+      display: block; margin: 0 auto 32px; padding: 12px 32px;
+      background: #1e3a5f; color: #fff; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em;
+    }
+    .btn-imprimir:hover { background: #2d5a9e; }
+    @media print {
+      .btn-imprimir { display: none !important; }
+      body { padding: 20px; }
+      .resumen-card { border: 1px solid #000 !important; background: #fff !important; }
+    }
+  </style>
+</head>
+<body>
+  <button class="btn-imprimir" onclick="window.print()">
+    🖨️ Imprimir / Guardar como PDF
+  </button>
+  <div class="header">
+    <h1>ESTADO DE CUENTA</h1>
+    <p class="fecha">${hoy}</p>
+  </div>
+  <div class="seccion">
+    <h2>Información</h2>
+    <p><strong>Deudor:</strong> ${loan.deudor}</p>
+    ${loan.concepto ? `<p><strong>Concepto:</strong> ${loan.concepto}</p>` : ''}
+    <p><strong>Fecha de inicio:</strong> ${new Date(loan.fecha_inicio).toLocaleDateString('es-CO')}</p>
+    <p><strong>Tasa de interés:</strong> ${loan.tasa_interes}% mensual</p>
+  </div>
+  <div class="seccion">
+    <h2>Movimientos</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Concepto</th>
+          <th>Tipo</th>
+          <th style="text-align:right">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || '<tr><td colspan="4" class="sin-movimientos">Sin movimientos registrados</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+  <div class="resumen-grid">
+    <div class="resumen-card">
+      <div class="label">Deuda original</div>
+      <div class="valor">$${deudaOriginal.toLocaleString('es-CO')}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Capital abonado</div>
+      <div class="valor success">$${totalAbonoCapital.toLocaleString('es-CO')}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Interés pendiente</div>
+      <div class="valor danger">$${interesPendiente.toLocaleString('es-CO')}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Restante por pagar</div>
+      <div class="valor danger">$${deudaRestante.toLocaleString('es-CO')}</div>
+    </div>
+  </div>
+  <div class="pie">
+    Documento generado automáticamente por PrestamoExpress
+  </div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+
+  } catch (error) {
+    console.error('Error al generar estado de cuenta:', error);
+    res.status(500).json({ mensaje: 'Error al generar estado de cuenta.' });
   }
 });
 

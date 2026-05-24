@@ -123,6 +123,23 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ grupo_id: grupoId }),
     }),
+
+  // Clientes
+  getClientes: () => request('/api/clientes'),
+  createCliente: (cliente) =>
+    request('/api/clientes', {
+      method: 'POST',
+      body: JSON.stringify(cliente),
+    }),
+  updateCliente: (id, cliente) =>
+    request(`/api/clientes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(cliente),
+    }),
+  deleteCliente: (id) =>
+    request(`/api/clientes/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Utilidad para formatear moneda COP

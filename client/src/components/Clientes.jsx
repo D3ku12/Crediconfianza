@@ -89,16 +89,23 @@ const Clientes = memo(function Clientes() {
 
   // ── Descargar estado de cuenta ──
   const verEstadoCuenta = async (clienteId, nombre) => {
+    // Abrimos ventana ANTES del fetch para evitar popup blocker
+    const ventana = window.open('', '_blank');
+    if (!ventana) {
+      alert('Permite las ventanas emergentes para ver el estado de cuenta.');
+      return;
+    }
+    ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:#666;">Cargando estado de cuenta...</p>');
     try {
       const res = await fetch(
         `/api/clientes/${clienteId}/estado-cuenta`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const html = await res.text();
-      const ventana = window.open('', '_blank');
       ventana.document.write(html);
       ventana.document.close();
     } catch (error) {
+      ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:red;">Error al generar el estado de cuenta.</p>');
       console.error('Error al generar estado de cuenta:', error);
     }
   };
