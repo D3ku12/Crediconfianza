@@ -1,4 +1,4 @@
-// rebuild forzado v2 - Clientes en sidebar y router
+// rebuild forzado - clientes fix
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
