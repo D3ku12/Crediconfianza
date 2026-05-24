@@ -4,7 +4,7 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileText, FileDown } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileDown } from 'lucide-react';
 import { generarEstadoCuentaPDF } from '../utils/pdfGenerator';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
@@ -206,29 +206,22 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     }
     setGenerandoPDF(loan.id);
     try {
-      const abonos = await api.getAbonos(loan.id);
+      const [abonos, todosClientes] = await Promise.all([
+        api.getAbonos(loan.id),
+        api.getClientes()
+      ]);
+      const cliente = Array.isArray(todosClientes)
+        ? todosClientes.find(c => c.id === loan.cliente_id) || {}
+        : {};
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const nombreUsuario = user.nombre_usuario || 'Usuario';
       setTimeout(() => {
-        generarEstadoCuentaPDF(loan, abonos, nombreUsuario);
+        generarEstadoCuentaPDF(loan, abonos, cliente, nombreUsuario);
         setGenerandoPDF(null);
       }, 100);
     } catch (err) {
       toast('Error al cargar datos para generar el PDF', 'error');
       setGenerandoPDF(null);
-    }
-  };
-
-  const verEstadoCuenta = async (loanId) => {
-    const ventana = window.open('', '_blank');
-    if (!ventana) { alert('Permite ventanas emergentes para ver el estado de cuenta.'); return; }
-    ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:#666;">Cargando...</p>');
-    try {
-      const html = await api.getPrestamoEstadoCuenta(loanId);
-      ventana.document.write(html);
-      ventana.document.close();
-    } catch (err) {
-      ventana.document.write('<p style="font-family:sans-serif;padding:2em;color:red;">Error al generar estado de cuenta.</p>');
     }
   };
 
@@ -424,7 +417,6 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                                 <button className="btn btn-secondary btn-small" onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{ minHeight: '44px' }} title="Descargar PDF">
                                   {generandoPDF === loan.id ? 'Generando...' : <><FileDown size={14} /> PDF</>}
                                 </button>
-                                <button className="btn btn-secondary btn-small" onClick={() => verEstadoCuenta(loan.id, loan.deudor)} style={{ minHeight: '44px', minWidth: '44px' }} title="Estado de cuenta"><FileText size={14} /></button>
                                 <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} title="Editar" aria-label="Editar préstamo"><Edit size={14} /></button>
                                 <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} title="Eliminar" aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
                               </div>

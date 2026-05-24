@@ -81,130 +81,116 @@ function buildMonthlyBreakdown(prestamo, abonos) {
   return rows;
 }
 
-export function generarEstadoCuentaPDF(prestamo, abonos, nombreUsuario) {
-  if (!prestamo || !abonos) {
-    return;
-  }
+export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nombreUsuario = 'Usuario') {
+  if (!prestamo) return;
 
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 14;
 
-  const mesAnio = formatDateDDMMYYYY(new Date());
-  const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  // ---- ENCABEZADO ----
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ESTADO DE CUENTA', 105, 20, { align: 'center' });
 
-  doc.setFontSize(16);
-  doc.text('Estado de Cuenta', margin, 20);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Fecha de generación: ${new Date().toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}`, 14, 30);
+  doc.text(`Generado por: ${nombreUsuario}`, 14, 36);
 
-  doc.setFontSize(9);
-  doc.text(`Generado: ${mesAnio} ${hora}`, margin, 28);
-  doc.text(`Usuario: ${nombreUsuario}`, margin, 34);
-
+  // ---- DATOS DEL CLIENTE ----
   doc.setFontSize(12);
-  doc.text('Datos del Deudor', margin, 45);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INFORMACIÓN DEL CLIENTE', 14, 48);
 
-  doc.setFontSize(9);
-  const deudorLines = [
-    ['Nombre', prestamo.deudor],
-    ['Fecha de inicio', formatDateDDMMYYYY(new Date(prestamo.fecha_inicio.split('T')[0]))],
-    ['Capital original', formatCOP(prestamo.capital_original)],
-    ['Capital pendiente', formatCOP(prestamo.capital_pendiente)],
-    ['Tasa de interés mensual', `${parseFloat(prestamo.tasa_interes).toFixed(2)}%`],
-    ['Interés mensual actual', formatCOP(prestamo.interes_mensual)],
-    ['Intereses pendientes por pagar', formatCOP(prestamo.interes_pendiente)],
-    ['Total intereses cobrados', formatCOP(prestamo.total_abonado_interes || 0)],
-  ];
-
-  const startY = 52;
-  const col1X = margin;
-  const col2X = margin + 70;
-
-  deudorLines.forEach((line, i) => {
-    const y = startY + i * 5.5;
-    doc.setFont('helvetica', 'bold');
-    doc.text(line[0], col1X, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(line[1], col2X, y);
+  autoTable(doc, {
+    startY: 52,
+    body: [
+      ['Cliente', prestamo.deudor],
+      ['Teléfono', cliente.telefono || '—'],
+      ['Documento', cliente.documento || '—'],
+      ['Fecha inicio', new Date(prestamo.fecha_inicio).toLocaleDateString('es-CO')],
+      ['Tasa de interés', `${prestamo.tasa_interes}% mensual`],
+    ],
+    theme: 'plain',
+    styles: { fontSize: 10 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
   });
 
-  let nextY = startY + deudorLines.length * 5.5 + 8;
+  // ---- RESUMEN FINANCIERO ----
+  const totalPagadoCapital = abonos
+    .filter(a => a.tipo === 'capital')
+    .reduce((s, a) => s + parseFloat(a.monto), 0);
 
-  const monthlyData = buildMonthlyBreakdown(prestamo, abonos);
+  const totalPagadoInteres = abonos
+    .filter(a => a.tipo === 'interes')
+    .reduce((s, a) => s + parseFloat(a.monto), 0);
 
-  if (monthlyData.length > 0) {
-    if (nextY > doc.internal.pageSize.getHeight() - 40) {
-      doc.addPage();
-      nextY = 20;
+  const totalPagado = totalPagadoCapital + totalPagadoInteres;
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RESUMEN FINANCIERO', 14, doc.lastAutoTable.finalY + 12);
+
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 16,
+    head: [['Concepto', 'Valor']],
+    body: [
+      ['Capital original prestado',     formatCOP(prestamo.capital_original)],
+      ['Capital pendiente por pagar',    formatCOP(prestamo.capital_pendiente)],
+      ['Capital pagado',                 formatCOP(totalPagadoCapital)],
+      ['Interés mensual actual',         formatCOP(prestamo.interes_mensual)],
+      ['Total intereses generados',      formatCOP(prestamo.interes_acumulado)],
+      ['Total intereses pagados',        formatCOP(totalPagadoInteres)],
+      ['Intereses pendientes',           formatCOP(prestamo.interes_pendiente)],
+      ['TOTAL PAGADO (capital + interés)', formatCOP(totalPagado)],
+      ['TOTAL DEUDA ACTUAL',             formatCOP(parseFloat(prestamo.capital_pendiente) + parseFloat(prestamo.interes_pendiente))],
+    ],
+    headStyles: { fillColor: [108, 99, 255] },
+    bodyStyles: { fontSize: 10 },
+    didParseCell: (data) => {
+      if (data.row.index === 7 || data.row.index === 8) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [240, 240, 255];
+      }
     }
+  });
 
-    autoTable(doc, {
-      startY: nextY,
-      head: [['Mes', 'Capital vigente', 'Interés generado', 'Abonos a interés', 'Abonos a capital', 'Saldo interés']],
-      body: monthlyData.map(r => [
-        r.mes,
-        formatCOP(r.capitalVigente),
-        formatCOP(r.interesGenerado),
-        formatCOP(r.abonosInteres),
-        formatCOP(r.abonosCapital),
-        formatCOP(r.saldoInteres),
-      ]),
-      styles: { fontSize: 7 },
-      headStyles: {
-        fillColor: [16, 185, 129],
-        textColor: [255, 255, 255],
-        fontSize: 7,
-      },
-      columnStyles: {
-        0: { cellWidth: 28 },
-      },
-    });
+  // ---- HISTORIAL DE ABONOS ----
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('HISTORIAL DE PAGOS', 14, doc.lastAutoTable.finalY + 12);
 
-    nextY = doc.lastAutoTable.finalY + 10;
-  }
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 16,
+    head: [['Fecha', 'Tipo', 'Monto', 'Nota']],
+    body: abonos.length > 0
+      ? abonos.map(a => [
+          new Date(a.fecha).toLocaleDateString('es-CO'),
+          a.tipo === 'interes' ? 'Interés' : 'Capital',
+          formatCOP(a.monto),
+          a.nota || '—'
+        ])
+      : [['—', '—', '—', 'Sin pagos registrados']],
+    headStyles: { fillColor: [108, 99, 255] },
+    styles: { fontSize: 9 }
+  });
 
-  if (abonos.length > 0) {
-    if (nextY > doc.internal.pageSize.getHeight() - 40) {
-      doc.addPage();
-      nextY = 20;
-    }
-
-    autoTable(doc, {
-      startY: nextY,
-      head: [['Fecha', 'Tipo', 'Monto', 'Nota']],
-      body: abonos.map(a => [
-        formatDateDDMMYYYY(new Date(a.fecha.split('T')[0])),
-        a.tipo === 'interes' ? 'Interés' : 'Capital',
-        formatCOP(a.monto),
-        a.nota || '—',
-      ]),
-      styles: { fontSize: 7.5 },
-      headStyles: {
-        fillColor: [99, 102, 241],
-        textColor: [255, 255, 255],
-        fontSize: 7.5,
-      },
-    });
-
-    nextY = doc.lastAutoTable.finalY + 10;
-  } else {
-    if (nextY > doc.internal.pageSize.getHeight() - 40) {
-      doc.addPage();
-      nextY = 20;
-    }
-    doc.setFontSize(9);
-    doc.text('No se han registrado abonos para este préstamo.', margin, nextY);
-    nextY += 8;
-  }
-
+  // ---- PIE DE PÁGINA ----
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFontSize(7);
-    const footerY = doc.internal.pageSize.getHeight() - 10;
-    doc.text(`Página ${i} de ${pageCount}`, margin, footerY);
-    doc.text('Documento generado automáticamente', pageWidth - margin, footerY, { align: 'right' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Página ${i} de ${pageCount} — Documento generado automáticamente`,
+      105,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' }
+    );
   }
 
-  const nombreArchivo = `estado-cuenta-${prestamo.deudor.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${formatDateDDMMYYYY(new Date()).replace(/\//g, '-')}.pdf`;
-  doc.save(nombreArchivo);
+  // ---- DESCARGAR ----
+  const nombre = prestamo.deudor.toLowerCase().replace(/\s+/g, '-');
+  const fecha = new Date().toISOString().split('T')[0];
+  doc.save(`estado-cuenta-${nombre}-${fecha}.pdf`);
 }

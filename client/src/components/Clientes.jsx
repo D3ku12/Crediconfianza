@@ -8,7 +8,7 @@ const Clientes = memo(function Clientes() {
   const [clienteEditando, setClienteEditando] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [form, setForm] = useState({
-    nombre: '', telefono: '', notas: ''
+    nombre: '', telefono: '', email: '', documento: '', notas: ''
   });
 
   // ── Cargar clientes ──
@@ -28,7 +28,7 @@ const Clientes = memo(function Clientes() {
 
   // ── Abrir formulario nuevo ──
   const abrirNuevo = () => {
-    setForm({ nombre:'', telefono:'', notas:'' });
+    setForm({ nombre:'', telefono:'', email:'', documento:'', notas:'' });
     setClienteEditando(null);
     setMostrarFormulario(true);
   };
@@ -36,9 +36,11 @@ const Clientes = memo(function Clientes() {
   // ── Abrir formulario editar ──
   const abrirEditar = (cliente) => {
     setForm({
-      nombre:   cliente.nombre   || '',
-      telefono: cliente.telefono || '',
-      notas:    cliente.notas    || '',
+      nombre:    cliente.nombre    || '',
+      telefono:  cliente.telefono  || '',
+      email:     cliente.email     || '',
+      documento: cliente.documento || '',
+      notas:     cliente.notas     || '',
     });
     setClienteEditando(cliente);
     setMostrarFormulario(true);
@@ -251,6 +253,14 @@ const Clientes = memo(function Clientes() {
                   🪪 {cliente.documento}
                 </span>
               )}
+              {parseFloat(cliente.total_prestamos) > 0 && (
+                <span style={{
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)',
+                }}>
+                  📋 {cliente.total_prestamos} préstamo{parseFloat(cliente.total_prestamos) !== 1 ? 's' : ''}
+                </span>
+              )}
               {parseFloat(cliente.deuda_total) > 0 && (
                 <span style={{
                   fontSize: '12px',
@@ -379,6 +389,20 @@ const Clientes = memo(function Clientes() {
               onChange={e => setForm({ ...form, telefono: e.target.value })}
               inputMode="tel"
               type="tel"
+            />
+            <input
+              style={inputStyle}
+              placeholder="Correo electrónico"
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              inputMode="email"
+              type="email"
+            />
+            <input
+              style={inputStyle}
+              placeholder="Documento de identidad"
+              value={form.documento}
+              onChange={e => setForm({ ...form, documento: e.target.value })}
             />
             <button
               onClick={async () => {

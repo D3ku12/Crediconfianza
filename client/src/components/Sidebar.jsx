@@ -5,9 +5,9 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMob
   const menuItems = [
     { id: 'resumen', label: 'Resumen', icon: BarChart3 },
     { id: 'prestamos', label: 'Préstamos', icon: CircleDollarSign },
+    { id: 'clientes', label: 'Clientes', icon: Users },
     { id: 'abonos', label: 'Abonos', icon: Receipt },
     { id: 'caja', label: 'Caja', icon: Wallet },
-    { id: 'clientes', label: 'Clientes', icon: Users },
   ];
 
   if (user && user.es_admin) {
