@@ -4,7 +4,8 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileText } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileText, FileDown } from 'lucide-react';
+import { generarEstadoCuentaPDF } from '../utils/pdfGenerator';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const toast = useToast();
@@ -32,6 +33,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [expandedLoanId, setExpandedLoanId] = useState(null);
   const [loanAbonos, setLoanAbonos] = useState({});
   const [loadingAbonos, setLoadingAbonos] = useState(false);
+  const [generandoPDF, setGenerandoPDF] = useState(null);
 
   const fetchPrestamos = async () => {
     try {
@@ -181,6 +183,32 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setActiveTab('abonos');
   };
 
+  const handleGenerarPDF = async (loan) => {
+    if (generandoPDF) return;
+    if (!loan) {
+      toast('No hay datos del préstamo para generar el PDF', 'error');
+      return;
+    }
+    setGenerandoPDF(loan.id);
+    try {
+      const abonos = await api.getAbonos(loan.id);
+      if (!abonos || abonos.length === 0) {
+        toast('No hay abonos registrados para generar el PDF', 'error');
+        setGenerandoPDF(null);
+        return;
+      }
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const nombreUsuario = user.nombre_usuario || 'Usuario';
+      setTimeout(() => {
+        generarEstadoCuentaPDF(loan, abonos, nombreUsuario);
+        setGenerandoPDF(null);
+      }, 100);
+    } catch (err) {
+      toast('Error al cargar datos para generar el PDF', 'error');
+      setGenerandoPDF(null);
+    }
+  };
+
   const verEstadoCuenta = async (loanId, deudor) => {
     const token = localStorage.getItem('token');
     const ventana = window.open('', '_blank');
@@ -296,6 +324,9 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                     {isActivo && <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1, minHeight: '44px' }}><Receipt size={14} /> Abonar</button>}
+                    <button className="btn btn-secondary btn-small" onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{ minHeight: '44px' }} title="Descargar PDF">
+                      {generandoPDF === loan.id ? 'Generando...' : <><FileDown size={14} /> PDF</>}
+                    </button>
                     <button className="btn btn-secondary btn-small" onClick={() => verEstadoCuenta(loan.id, loan.deudor)} style={{ minHeight: '44px', minWidth: '44px' }} title="Estado de cuenta"><FileText size={14} /></button>
                     <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
                     <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
@@ -372,6 +403,9 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                             <td>
                               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 {isActivo && <button className="btn btn-secondary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ minHeight: '44px' }} title="Registrar Abono" aria-label="Registrar abono"><Receipt size={14} /></button>}
+                                <button className="btn btn-secondary btn-small" onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{ minHeight: '44px' }} title="Descargar PDF">
+                                  {generandoPDF === loan.id ? 'Generando...' : <><FileDown size={14} /> PDF</>}
+                                </button>
                                 <button className="btn btn-secondary btn-small" onClick={() => verEstadoCuenta(loan.id, loan.deudor)} style={{ minHeight: '44px', minWidth: '44px' }} title="Estado de cuenta"><FileText size={14} /></button>
                                 <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} title="Editar" aria-label="Editar préstamo"><Edit size={14} /></button>
                                 <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} title="Eliminar" aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
