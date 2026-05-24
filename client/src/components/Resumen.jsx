@@ -11,7 +11,7 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, classNam
           <span>{title}</span>
           <div className="metric-icon"><Icon size={18} /></div>
         </div>
-        <span className={`metric-value ${className}`}>{value}</span>
+        <span className={`metric-value ${className}`} style={{ wordBreak: 'break-all' }}>{value}</span>
       </div>
     </div>
   );

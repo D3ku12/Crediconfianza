@@ -224,7 +224,7 @@ export default function Caja() {
               <option value="abono">Sólo Abonos</option>
             </select>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', maxHeight: '420px', paddingRight: '0.25rem' }}>
+          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', maxHeight: '420px', paddingRight: '0.25rem' }}>
             {loading ? (
               <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem', padding: '2rem' }}>Cargando movimientos...</p>
             ) : transacciones.length === 0 ? (
@@ -389,12 +389,10 @@ export default function Caja() {
       </div>
 
       {transaccionEditando && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={handleCloseEdit}>
-          <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '2rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Editar Transacción</h3>
-              <button onClick={handleCloseEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.25rem', display: 'flex', minHeight: '44px', minWidth: '44px', alignItems: 'center', justifyContent: 'center' }} aria-label="Cerrar"><X size={20} /></button>
-            </div>
+        <div className="modal-overlay" onClick={handleCloseEdit}>
+          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={handleCloseEdit} aria-label="Cerrar">×</button>
+            <h3 className="modal-title">Editar Transacción</h3>
             <form onSubmit={handleSaveEdit}>
               <div className="form-group">
                 <label>Tipo de Operación *</label>

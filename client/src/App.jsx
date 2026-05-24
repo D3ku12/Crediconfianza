@@ -9,6 +9,7 @@ import { useTema } from './hooks/useTema';
 
 const Resumen = lazy(() => import('./components/Resumen'));
 const Prestamos = lazy(() => import('./components/Prestamos'));
+const Clientes = lazy(() => import('./components/Clientes'));
 const Abonos = lazy(() => import('./components/Abonos'));
 const AdminUsuarios = lazy(() => import('./components/AdminUsuarios'));
 const Caja = lazy(() => import('./components/Caja'));
@@ -86,6 +87,8 @@ export default function App() {
             setSelectedLoanForAbono={setSelectedLoan} 
           />
         );
+      case 'clientes':
+        return <Clientes />;
       case 'abonos':
         return (
           <Abonos 
@@ -107,6 +110,7 @@ export default function App() {
     switch (activeTab) {
       case 'resumen': return 'Dashboard';
       case 'prestamos': return 'Cartera de Préstamos';
+      case 'clientes': return 'Gestión de Clientes';
       case 'abonos': return 'Procesamiento de Abonos';
       case 'caja': return 'Control de Caja';
       case 'usuarios': return 'Administración de Usuarios';
@@ -125,15 +129,52 @@ export default function App() {
       />
       
       <main className="main-content">
-        <header className="app-header">
-          <div>
-            <h1>{getTabTitle()}</h1>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
-              CREDIALIADO — Moneda: COP ($)
+        <header className="app-header" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'var(--color-glass)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid var(--color-border)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          gap: '8px',
+          marginBottom: 0,
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            minWidth: 0,
+            flex: 1,
+          }}>
+            <h1 style={{
+              fontSize: 'clamp(14px, 4vw, 20px)',
+              fontWeight: '700',
+              color: 'var(--color-text)',
+              margin: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {getTabTitle()}
+            </h1>
+            <p style={{
+              fontSize: 'clamp(11px, 2.5vw, 13px)',
+              color: 'var(--text-secondary)',
+              margin: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              CREDIALIADO — COP ($)
             </p>
           </div>
           
-          <div className="header-actions">
+          <div className="header-actions" style={{ flexShrink: 0 }}>
             <SelectorTema />
             <button className="notification-btn" aria-label="Notificaciones" onClick={() => setVerNotifs(!verNotifs)} style={{ position: 'relative' }}>
               <Bell size={20} />
@@ -155,7 +196,7 @@ export default function App() {
                 position: 'absolute', top: '60px', right: '16px',
                 background: 'var(--color-card)', borderRadius: '12px',
                 boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                width: '300px', zIndex: 1000, overflow: 'hidden'
+                width: 'clamp(260px, 90vw, 360px)', zIndex: 1000, overflow: 'hidden'
               }}>
                 <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)' }}>
                   <strong style={{ fontSize: '14px' }}>Notificaciones</strong>
@@ -204,7 +245,7 @@ export default function App() {
           </div>
         </header>
 
-        <section style={{ flex: 1 }}>
+        <section style={{ flex: 1, minWidth: 0 }}>
           <Suspense fallback={suspenseFallback}>
             {renderTabContent()}
           </Suspense>

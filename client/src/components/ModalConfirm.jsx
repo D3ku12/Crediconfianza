@@ -3,11 +3,7 @@ import { createPortal } from 'react-dom';
 
 export const ModalConfirm = memo(function ModalConfirm({ mensaje, onConfirmar, onCancelar }) {
   return createPortal(
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-      zIndex: 9998, display: 'flex', alignItems: 'center',
-      justifyContent: 'center', padding: '24px'
-    }}>
+    <div className="modal-overlay" style={{ padding: '24px', alignItems: 'center' }}>
       <div style={{
         background: 'var(--color-card)', borderRadius: '16px', padding: '28px',
         maxWidth: '340px', width: '100%', textAlign: 'center',
@@ -21,7 +17,8 @@ export const ModalConfirm = memo(function ModalConfirm({ mensaje, onConfirmar, o
           <button onClick={onCancelar} style={{
             padding: '10px 24px', borderRadius: '8px',
             border: '1px solid var(--border-color)', background: 'var(--color-bg)',
-            cursor: 'pointer', fontSize: '14px', fontWeight: '500'
+            cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+            minHeight: '44px'
           }}>
             Cancelar
           </button>
@@ -29,7 +26,8 @@ export const ModalConfirm = memo(function ModalConfirm({ mensaje, onConfirmar, o
             padding: '10px 24px', borderRadius: '8px',
             border: 'none', background: 'var(--color-danger)',
             color: '#fff', cursor: 'pointer',
-            fontSize: '14px', fontWeight: '500'
+            fontSize: '14px', fontWeight: '500',
+            minHeight: '44px'
           }}>
             Confirmar
           </button>

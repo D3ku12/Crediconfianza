@@ -172,11 +172,11 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1, minHeight: '44px' }} disabled={submitting || !selectedLoanId}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, minWidth: 0, minHeight: '44px' }} disabled={submitting || !selectedLoanId}>
                 {submitting ? 'Registrando...' : 'Registrar Abono'}
               </button>
               {selectedLoanData && (
-                <button type="button" className="btn btn-secondary" style={{ flex: 1, borderColor: 'var(--accent)', color: 'var(--accent)', minHeight: '44px' }} disabled={submitting || !selectedLoanId} onClick={handlePagoTotalClick}>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1, minWidth: 0, borderColor: 'var(--accent)', color: 'var(--accent)', minHeight: '44px' }} disabled={submitting || !selectedLoanId} onClick={handlePagoTotalClick}>
                   Pago Total (Liquidar)
                 </button>
               )}
@@ -230,7 +230,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
       {showConfirmModal && selectedLoanData && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <button className="modal-close" onClick={() => setShowConfirmModal(false)}>&times;</button>
+            <button className="modal-close" onClick={() => setShowConfirmModal(false)}>×</button>
             <h2 className="modal-title">Confirmar Liquidación</h2>
             <div style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
               <p>¿Estás seguro de liquidar este crédito? Se registrarán automáticamente los siguientes pagos con fecha <strong>{formatFecha(fecha)}</strong>:</p>

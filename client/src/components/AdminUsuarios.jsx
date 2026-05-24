@@ -113,7 +113,7 @@ export default function AdminUsuarios() {
           Los usuarios <strong>sin grupo</strong> tienen una cuenta completamente individual.
         </p>
         <form onSubmit={handleCrearGrupo} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
             <FolderPlus size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input id="nuevo-grupo" type="text" className="form-control" placeholder="Nombre del nuevo grupo (ej: Socios Principal)" value={nuevoGrupoNombre} onChange={(e) => setNuevoGrupoNombre(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creandoGrupo} />
           </div>
@@ -194,7 +194,7 @@ export default function AdminUsuarios() {
         {error && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
         {success && <div className="badge success w-full" style={{ padding: '0.75rem', borderRadius: '0.75rem', marginBottom: '1.25rem', justifyContent: 'center', fontSize: '0.85rem' }}>{success}</div>}
         <form onSubmit={handleRegisterUser}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
               <label htmlFor="reg-nombre">Nombre Completo *</label>
               <div style={{ position: 'relative' }}>

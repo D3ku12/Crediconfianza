@@ -227,6 +227,40 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span><span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', fontStyle: 'italic', marginTop: '2px' }}>🕐 {loan.tiempo_texto}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Tiempo</span><span style={{ fontWeight: '500' }}>{loan.tasa_interes}% · {loan.tiempo_texto}</span></div>
                   </div>
+                  {/* Próximo vencimiento */}
+                  {loan.proximo_vencimiento && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginTop: '8px',
+                    padding: '6px 10px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: loan.dias_para_vencer <= 5
+                      ? 'rgba(239,68,68,0.10)'
+                      : loan.dias_para_vencer <= 10
+                      ? 'rgba(251,191,36,0.10)'
+                      : 'var(--color-accent-soft)',
+                  }}>
+                    <span style={{ fontSize: '12px' }}>📅</span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: loan.dias_para_vencer <= 5
+                        ? 'var(--color-danger)'
+                        : loan.dias_para_vencer <= 10
+                        ? 'var(--color-warning)'
+                        : 'var(--color-text-muted)',
+                      fontWeight: loan.dias_para_vencer <= 5 ? '600' : '400',
+                    }}>
+                      {loan.dias_para_vencer === 0
+                        ? '⚠️ Vence hoy'
+                        : loan.dias_para_vencer < 0
+                        ? `Venció hace ${Math.abs(loan.dias_para_vencer)} días`
+                        : `Próximo cobro: ${loan.proximo_vencimiento}`
+                      }
+                    </span>
+                  </div>
+                  )}
                   <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
                     {isActivo && <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1, minHeight: '44px' }}><Receipt size={14} /> Abonar</button>}
                     <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
@@ -379,7 +413,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
               <div className="form-group">
                 <label htmlFor="modal-deudor">Nombre del Deudor *</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <div style={{ position: 'relative', flex: 1 }}>
+                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
                     <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                     <input id="modal-deudor" type="text" className="form-control" placeholder="Nombre completo" value={deudor} onChange={(e) => setDeudor(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required list="deudores-list" autoComplete="off" />
                     <datalist id="deudores-list">{listaDeudores.map((n, i) => <option key={i} value={n} />)}</datalist>
