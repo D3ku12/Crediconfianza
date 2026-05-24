@@ -3,7 +3,7 @@ FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/client
 COPY client/package*.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps --prefer-offline
 COPY client/ ./
 RUN npm run build
 
@@ -12,7 +12,7 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 COPY server/package*.json ./server/
-RUN npm install --prefix server --legacy-peer-deps --omit=dev
+RUN npm ci --prefix server --legacy-peer-deps --omit=dev --prefer-offline
 COPY server/ ./server/
 COPY --from=frontend-build /app/client/dist ./client/dist
 
