@@ -7,6 +7,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMob
     { id: 'prestamos', label: 'Préstamos', icon: CircleDollarSign },
     { id: 'abonos', label: 'Abonos', icon: Receipt },
     { id: 'caja', label: 'Caja', icon: Wallet },
+    { id: 'clientes', label: 'Clientes', icon: Users },
   ];
 
   if (user && user.es_admin) {

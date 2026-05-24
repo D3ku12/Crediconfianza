@@ -207,11 +207,6 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setGenerandoPDF(loan.id);
     try {
       const abonos = await api.getAbonos(loan.id);
-      if (!abonos || abonos.length === 0) {
-        toast('No hay abonos registrados para generar el PDF', 'error');
-        setGenerandoPDF(null);
-        return;
-      }
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const nombreUsuario = user.nombre_usuario || 'Usuario';
       setTimeout(() => {

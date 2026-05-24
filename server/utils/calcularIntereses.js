@@ -97,7 +97,7 @@ function calcularIntereses(prestamo, abonos) {
     tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}`
   }
 
-  const proximoVencimiento = obtenerFechaInicioMes(fechaInicio, monthIndex + 1)
+  const proximoVencimiento = obtenerFechaInicioMes(fechaInicio, monthIndex)
   const diasParaVencer = Math.ceil((proximoVencimiento - hoy) / (1000 * 60 * 60 * 24))
 
   return {
