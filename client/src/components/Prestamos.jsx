@@ -343,7 +343,6 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     <button className="btn btn-secondary btn-small" onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{ minHeight: '44px' }} title="Descargar PDF">
                       {generandoPDF === loan.id ? 'Generando...' : <><FileDown size={14} /> PDF</>}
                     </button>
-                    <button className="btn btn-secondary btn-small" onClick={() => verEstadoCuenta(loan.id, loan.deudor)} style={{ minHeight: '44px', minWidth: '44px' }} title="Estado de cuenta"><FileText size={14} /></button>
                     <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
                     <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
                     <button onClick={() => handleToggleExpand(loan.id)} className="btn btn-secondary btn-small" style={{ minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
