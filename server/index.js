@@ -44,13 +44,17 @@ app.use((req, res, next) => {
 // ==========================================
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL,
-    'http://localhost:5173'
+    'https://credialiado.digital',
+    'https://www.credialiado.digital',
+    'http://localhost:5173',
+    'http://localhost:3000'
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
+
+app.options('*', cors())
 app.use(express.json())
 
 // ==========================================
