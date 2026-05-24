@@ -4,7 +4,7 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, User, DollarSign, Percent, Receipt, Edit, Trash2, BookOpen, FileText } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileText } from 'lucide-react';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const toast = useToast();
@@ -17,12 +17,13 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoanId, setEditingLoanId] = useState(null);
   const [deudor, setDeudor] = useState('');
+  const [clientes, setClientes] = useState([]);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   const [capitalDisplay, setCapitalDisplay] = useState('');
   const [tasaInteres, setTasaInteres] = useState('20');
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0]);
   const [modalError, setModalError] = useState('');
   const [creating, setCreating] = useState(false);
-  const [listaDeudores, setListaDeudores] = useState([]);
 
   const [confirm, setConfirm] = useState(null);
   const [cajaSaldo, setCajaSaldo] = useState(null);
@@ -46,8 +47,21 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
 
   useEffect(() => { fetchPrestamos(); }, []);
 
+  useEffect(() => {
+    const cargarClientes = async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/clientes', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setClientes(Array.isArray(data) ? data : []);
+    };
+    cargarClientes();
+  }, []);
+
   const handleOpenModal = async () => {
     setDeudor('');
+    setClienteSeleccionado('');
     setCapitalDisplay('');
     setTasaInteres('20');
     setFechaInicio(new Date().toISOString().split('T')[0]);
@@ -55,11 +69,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setIsModalOpen(true);
     setEditingLoanId(null);
     try {
-      const [deudores, caja] = await Promise.all([
-        api.getDeudores(),
-        api.getCajaSaldo()
-      ]);
-      setListaDeudores(deudores);
+      const caja = await api.getCajaSaldo();
       setCajaSaldo(caja.saldo);
     } catch {}
   };
@@ -84,11 +94,14 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
         });
         toast('Préstamo actualizado con éxito', 'exito');
       } else {
+        const clienteSel = clientes.find(c => c.id === parseInt(clienteSeleccionado));
         result = await api.createPrestamo({
-          deudor,
+          deudor: clienteSel?.nombre || deudor,
           capital_original: capitalNumerico,
           tasa_interes: parseFloat(tasaInteres),
           fecha_inicio: fechaInicio,
+          cliente_id: clienteSeleccionado ? parseInt(clienteSeleccionado) : null,
+          concepto: '',
         });
         toast('Préstamo creado con éxito', 'exito');
       }
@@ -108,6 +121,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
 
   const handleEditClick = (loan) => {
     setDeudor(loan.deudor);
+    setClienteSeleccionado(loan.cliente_id ? String(loan.cliente_id) : '');
     setCapitalDisplay(String(loan.capital_original).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
     setTasaInteres(loan.tasa_interes.toString());
     setFechaInicio(loan.fecha_inicio.split('T')[0]);
@@ -430,19 +444,41 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
 
             <form onSubmit={handleCreatePrestamo}>
               <div className="form-group">
-                <label htmlFor="modal-deudor">Nombre del Deudor *</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-                    <User size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input id="modal-deudor" type="text" className="form-control" placeholder="Nombre completo" value={deudor} onChange={(e) => setDeudor(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required list="deudores-list" autoComplete="off" />
-                    <datalist id="deudores-list">{listaDeudores.map((n, i) => <option key={i} value={n} />)}</datalist>
+                <label style={{ fontSize: '13px', color: 'var(--color-text-soft)', fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                  Cliente *
+                </label>
+                {clientes.length === 0 ? (
+                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-accent-soft)', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+                    ⚠️ No hay clientes registrados.{' '}
+                    <span
+                      style={{ color: 'var(--color-accent)', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => setActiveTab('clientes')}
+                    >
+                      Crea un cliente primero
+                    </span>
                   </div>
-                  {('contacts' in navigator && 'ContactsManager' in window) && (
-                    <button type="button" className="btn btn-secondary" onClick={async () => { try { const c = await navigator.contacts.select(['name'], { multiple: false }); if (c?.[0]?.name?.[0]) setDeudor(c[0].name[0]); } catch {} }} style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px' }} title="Seleccionar de Contactos" aria-label="Seleccionar de contactos">
-                      <BookOpen size={18} style={{ color: 'var(--primary-color)' }} />
-                    </button>
-                  )}
-                </div>
+                ) : (
+                  <select
+                    value={clienteSeleccionado}
+                    onChange={e => {
+                      setClienteSeleccionado(e.target.value);
+                      const c = clientes.find(cl => cl.id === parseInt(e.target.value));
+                      if (c) setDeudor(c.nombre);
+                    }}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-glass)', color: clienteSeleccionado ? 'var(--color-text)' : 'var(--color-text-muted)', fontSize: '16px', fontFamily: 'inherit', outline: 'none', marginBottom: '12px', cursor: 'pointer' }}
+                    disabled={editingLoanId}
+                  >
+                    <option value="" disabled>Selecciona un cliente</option>
+                    {clientes.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                        {parseFloat(c.deuda_total) > 0
+                          ? ` — Deuda: $${parseFloat(c.deuda_total).toLocaleString('es-CO')}`
+                          : ' — Sin deuda activa'}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="form-group">

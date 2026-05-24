@@ -7,7 +7,7 @@ const Clientes = memo(function Clientes() {
   const [clienteEditando, setClienteEditando] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
   const [form, setForm] = useState({
-    nombre: '', telefono: '', email: '', documento: '', notas: ''
+    nombre: '', telefono: '', notas: ''
   });
 
   const token = localStorage.getItem('token');
@@ -32,7 +32,7 @@ const Clientes = memo(function Clientes() {
 
   // ── Abrir formulario nuevo ──
   const abrirNuevo = () => {
-    setForm({ nombre:'', telefono:'', email:'', documento:'', notas:'' });
+    setForm({ nombre:'', telefono:'', notas:'' });
     setClienteEditando(null);
     setMostrarFormulario(true);
   };
@@ -40,11 +40,9 @@ const Clientes = memo(function Clientes() {
   // ── Abrir formulario editar ──
   const abrirEditar = (cliente) => {
     setForm({
-      nombre:    cliente.nombre    || '',
-      telefono:  cliente.telefono  || '',
-      email:     cliente.email     || '',
-      documento: cliente.documento || '',
-      notas:     cliente.notas     || '',
+      nombre:   cliente.nombre   || '',
+      telefono: cliente.telefono || '',
+      notas:    cliente.notas    || '',
     });
     setClienteEditando(cliente);
     setMostrarFormulario(true);
@@ -89,7 +87,11 @@ const Clientes = memo(function Clientes() {
 
   // ── Descargar estado de cuenta ──
   const verEstadoCuenta = async (clienteId, nombre) => {
-    // Abrimos ventana ANTES del fetch para evitar popup blocker
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('No hay token de autenticación');
+      return;
+    }
     const ventana = window.open('', '_blank');
     if (!ventana) {
       alert('Permite las ventanas emergentes para ver el estado de cuenta.');
@@ -101,6 +103,13 @@ const Clientes = memo(function Clientes() {
         `/api/clientes/${clienteId}/estado-cuenta`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      const contentType = res.headers.get('content-type');
+      if (!res.ok || !contentType?.includes('text/html')) {
+        const error = await res.json().catch(() => ({ mensaje: 'Error desconocido' }));
+        ventana.document.write(`<p style="font-family:sans-serif;padding:2em;color:red;">Error: ${error.mensaje || 'No se pudo generar el estado de cuenta.'}</p>`);
+        console.error('Error:', error.mensaje);
+        return;
+      }
       const html = await res.text();
       ventana.document.write(html);
       ventana.document.close();
@@ -391,30 +400,61 @@ const Clientes = memo(function Clientes() {
               placeholder="Nombre completo *"
               value={form.nombre}
               onChange={e => setForm({ ...form, nombre: e.target.value })}
+              autoFocus
             />
             <input
               style={inputStyle}
-              placeholder="Teléfono"
+              placeholder="Número de teléfono"
               value={form.telefono}
               onChange={e => setForm({ ...form, telefono: e.target.value })}
               inputMode="tel"
+              type="tel"
             />
-            <input
-              style={inputStyle}
-              placeholder="Email"
-              value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })}
-              inputMode="email"
-            />
-            <input
-              style={inputStyle}
-              placeholder="Documento de identidad"
-              value={form.documento}
-              onChange={e => setForm({ ...form, documento: e.target.value })}
-            />
+            <button
+              onClick={async () => {
+                try {
+                  if (!('contacts' in navigator && 'ContactsManager' in window)) {
+                    alert('Tu navegador no soporta acceso a contactos. Ingresa el número manualmente.');
+                    return;
+                  }
+                  const props = ['name', 'tel'];
+                  const opts = { multiple: false };
+                  const contactos = await navigator.contacts.select(props, opts);
+                  if (contactos.length > 0) {
+                    const c = contactos[0];
+                    setForm(prev => ({
+                      ...prev,
+                      nombre:   c.name?.[0]   || prev.nombre,
+                      telefono: c.tel?.[0]    || prev.telefono,
+                    }));
+                  }
+                } catch (e) {
+                  console.error('Error accediendo contactos:', e);
+                  alert('No se pudo acceder a los contactos.');
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--color-border)',
+                background: 'transparent',
+                color: 'var(--color-text-soft)',
+                fontSize: '14px',
+                cursor: 'pointer',
+                minHeight: '44px',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              📱 Importar desde contactos
+            </button>
             <textarea
               style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
-              placeholder="Notas adicionales"
+              placeholder="Descripción o notas del cliente"
               value={form.notas}
               onChange={e => setForm({ ...form, notas: e.target.value })}
             />

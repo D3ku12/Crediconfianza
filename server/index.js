@@ -978,11 +978,28 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
           .filter(a => a.tipo === 'capital')
           .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
-        const calculo = calcularInteresTotal(
-          loan.capital_pendiente,
-          loan.tasa_interes,
-          loan.fecha_inicio
-        );
+        let calculo;
+        try {
+          calculo = calcularInteresTotal(
+            loan.capital_pendiente,
+            loan.tasa_interes,
+            loan.fecha_inicio
+          );
+        } catch (e) {
+          console.error('Error calculando interés para préstamo', loan.id, e);
+          calculo = {
+            diasTranscurridos: 0,
+            interesAcumulado: 0,
+            interesMensual: 0,
+            interesDiario: 0,
+            mesesVencidos: 0,
+            totalMeses: 1,
+            tiempoTexto: 'Sin calcular',
+            label: 'Sin calcular',
+            proximoVencimiento: 'Sin calcular',
+            diasParaVencer: 0,
+          };
+        }
         const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
         
         return {
@@ -1021,7 +1038,7 @@ app.post('/api/prestamos', apiLimiter, authenticateToken, invalidateCache, valid
   tasa_interes: { requerido: false, tipo: 'numero', max: 100, min: 0 },
   fecha_inicio: { requerido: true, tipo: 'fecha' }
 }), async (req, res) => {
-  const { deudor, capital_original, tasa_interes, fecha_inicio } = req.body;
+  const { deudor, capital_original, tasa_interes, fecha_inicio, cliente_id, concepto } = req.body;
 
   const tasa = tasa_interes !== undefined ? parseFloat(tasa_interes) : 20.00;
   const montoPrestamo = parseFloat(capital_original);
@@ -1047,9 +1064,9 @@ app.post('/api/prestamos', apiLimiter, authenticateToken, invalidateCache, valid
 
     // 2. Insertar el préstamo
     const result = await client.query(
-      `INSERT INTO prestamos (usuario_id, deudor, capital_original, capital_pendiente, tasa_interes, fecha_inicio, activo) 
-       VALUES ($1, $2, $3, $3, $4, $5, TRUE) RETURNING *`,
-      [req.user.id, deudor, montoPrestamo, tasa, fecha_inicio]
+      `INSERT INTO prestamos (usuario_id, deudor, capital_original, capital_pendiente, tasa_interes, fecha_inicio, activo, cliente_id, concepto) 
+       VALUES ($1, $2, $3, $3, $4, $5, TRUE, $6, $7) RETURNING *`,
+      [req.user.id, deudor, montoPrestamo, tasa, fecha_inicio, cliente_id || null, concepto || null]
     );
     const nuevoPrestamo = result.rows[0];
 
@@ -1736,11 +1753,28 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
           .filter(a => a.tipo === 'capital')
           .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
-        const calculo = calcularInteresTotal(
-          loan.capital_pendiente,
-          loan.tasa_interes,
-          loan.fecha_inicio
-        );
+        let calculo;
+        try {
+          calculo = calcularInteresTotal(
+            loan.capital_pendiente,
+            loan.tasa_interes,
+            loan.fecha_inicio
+          );
+        } catch (e) {
+          console.error('Error calculando interés para préstamo', loan.id, e);
+          calculo = {
+            diasTranscurridos: 0,
+            interesAcumulado: 0,
+            interesMensual: 0,
+            interesDiario: 0,
+            mesesVencidos: 0,
+            totalMeses: 1,
+            tiempoTexto: 'Sin calcular',
+            label: 'Sin calcular',
+            proximoVencimiento: 'Sin calcular',
+            diasParaVencer: 0,
+          };
+        }
         const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
         
         const capOrig = parseFloat(loan.capital_original);
