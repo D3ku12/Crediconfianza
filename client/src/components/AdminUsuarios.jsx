@@ -225,7 +225,7 @@ export default function AdminUsuarios() {
             </div>
           </div>
           <div className="form-group" style={{ marginBottom: '1.75rem', marginTop: '0.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'white', minHeight: '44px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'var(--color-text)', minHeight: '44px' }}>
               <input type="checkbox" checked={esAdmin} onChange={(e) => setEsAdmin(e.target.checked)} disabled={submitting} style={{ accentColor: 'var(--accent)', width: '16px', height: '16px' }} />
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>¿Asignar Rol de Administrador?<Shield size={14} className="text-yellow" style={{ marginLeft: '2px' }} /></span>
             </label>

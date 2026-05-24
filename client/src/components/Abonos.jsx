@@ -142,11 +142,11 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
             <div className="form-group">
               <label>Tipo de Abono *</label>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'white', minHeight: '44px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'var(--color-text)', minHeight: '44px' }}>
                   <input type="radio" name="tipo-abono" value="interes" checked={tipo === 'interes'} onChange={() => setTipo('interes')} disabled={submitting || !selectedLoanId} />
                   Abono a Interés
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'white', minHeight: '44px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'var(--color-text)', minHeight: '44px' }}>
                   <input type="radio" name="tipo-abono" value="capital" checked={tipo === 'capital'} onChange={() => setTipo('capital')} disabled={submitting || !selectedLoanId} />
                   Abono a Capital
                 </label>
@@ -202,7 +202,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
               <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Abonado a Intereses:</span><span className="text-green" style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.total_abonado_interes)}</span></div>
               <div style={{ fontSize: '1.05rem', fontWeight: '700', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem' }}>
                 <div className="flex-row-between">
-                  <span style={{ color: 'white' }}>Interés Pendiente:</span>
+                  <span style={{ color: 'var(--color-text)' }}>Interés Pendiente:</span>
                   <span className={selectedLoanData.interes_pendiente > 0 ? 'text-red' : 'text-green'}>{formatCOP(selectedLoanData.interes_pendiente)}</span>
                 </div>
                 {selectedLoanData.tiempo_label && (

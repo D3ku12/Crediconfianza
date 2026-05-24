@@ -145,7 +145,7 @@ export default function Caja() {
       }}>
         <div>
           <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dinero Disponible en Caja</span>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: '800', marginTop: '0.25rem', color: 'white', textShadow: '0 0 20px rgba(16, 185, 129, 0.2)' }}>{formatCOP(saldo)}</h2>
+          <h2 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', fontWeight: '800', marginTop: '0.25rem', color: 'var(--color-text)', textShadow: '0 0 20px rgba(16, 185, 129, 0.2)' }}>{formatCOP(saldo)}</h2>
         </div>
         <button className="btn btn-secondary btn-small" onClick={fetchCajaData} disabled={loading} style={{ height: '44px', width: '44px', padding: 0, justifyContent: 'center' }} aria-label="Actualizar datos de caja">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
