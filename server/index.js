@@ -327,6 +327,15 @@ async function getSharedUserIds(userId, client = db) {
   return [userId];
 }
 
+// --- Helper: Hora actual en Colombia (UTC-5) ---
+function ahoraCol() {
+  const ahora = new Date();
+  const utcMs = ahora.getTime() + ahora.getTimezoneOffset() * 60000;
+  const colMs = utcMs - 5 * 3600000;
+  const colDate = new Date(colMs);
+  return new Date(colDate.getFullYear(), colDate.getMonth(), colDate.getDate());
+}
+
 // --- Helper: Obtener inicio del mes para un préstamo (respetando día exacto) ---
 function obtenerFechaInicioMes(fechaBase, mesesSumar) {
   const [y, m, d] = [fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate()];
@@ -342,17 +351,19 @@ function obtenerFechaInicioMes(fechaBase, mesesSumar) {
 function calcularIntereses(prestamo, abonos) {
   const capitalOriginal = parseFloat(prestamo.capital_original);
   const tasa = parseFloat(prestamo.tasa_interes);
-  const [y, m, d] = prestamo.fecha_inicio.split('T')[0].split('-').map(Number);
-  const fechaInicio = new Date(y, m - 1, d);
+  const fechaInicio = new Date(prestamo.fecha_inicio);
   fechaInicio.setHours(0, 0, 0, 0);
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = ahoraCol();
 
   // Ordenar abonos a capital por fecha ASC
   const abonosCapital = (abonos || [])
     .filter(a => a.tipo === 'capital')
-    .map(a => ({ monto: parseFloat(a.monto), fecha: new Date(a.fecha.substring(0, 10) + 'T00:00:00') }))
+    .map(a => {
+      const f = new Date(a.fecha);
+      f.setHours(0, 0, 0, 0);
+      return { monto: parseFloat(a.monto), fecha: f };
+    })
     .sort((a, b) => a.fecha - b.fecha);
 
   const totalAbonoCapital = abonosCapital.reduce((s, a) => s + a.monto, 0);
@@ -623,6 +634,25 @@ app.put('/api/usuarios/:id/grupo', authenticateToken, requireAdmin, async (req, 
   }
 });
 
+// DELETE /api/usuarios/:id
+app.delete('/api/usuarios/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const userCheck = await db.query('SELECT id FROM usuarios WHERE id = $1', [id]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
+    }
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ mensaje: 'No puedes eliminarte a ti mismo.' });
+    }
+    await db.query('DELETE FROM usuarios WHERE id = $1', [id]);
+    res.json({ mensaje: 'Usuario eliminado correctamente.' });
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ mensaje: 'Error al eliminar usuario.' });
+  }
+});
+
 
 // ==========================================
 // RUTAS DE CLIENTES (DEUDORES)
@@ -768,7 +798,7 @@ app.get('/api/clientes/:id/estado-cuenta', authenticateToken, async (req, res) =
       .filter(p => p.activo)
       .reduce((s, p) => s + parseFloat(p.capital_pendiente), 0);
 
-    const hoy = new Date().toLocaleDateString('es-CO', {
+    const hoy = ahoraCol().toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric'
     });
 
@@ -1202,7 +1232,7 @@ app.get('/api/prestamos/:id/estado-cuenta', authenticateToken, async (req, res) 
     const calculo = calcularIntereses(loan, abonos);
     const interesPendiente = calculo.interes_pendiente;
 
-    const hoy = new Date().toLocaleDateString('es-CO', {
+    const hoy = ahoraCol().toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric'
     });
 

@@ -10,7 +10,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMob
   ];
 
   if (user && user.es_admin) {
-    menuItems.push({ id: 'usuarios', label: 'Administración', icon: Users });
+    menuItems.push({ id: 'usuarios', label: 'Usuarios', icon: Users });
   }
 
   const handleNavClick = (id) => {

@@ -62,6 +62,23 @@ export default function AdminUsuarios() {
     });
   };
 
+  const handleEliminarUsuario = (userId, nombreUsuario) => {
+    setConfirm({
+      mensaje: `¿Eliminar al usuario "${nombreUsuario}"? Se eliminarán todos sus préstamos, abonos y transacciones. Esta acción no se puede deshacer.`,
+      onConfirmar: async () => {
+        setConfirm(null);
+        try {
+          await api.deleteUser(userId);
+          toast(`Usuario "${nombreUsuario}" eliminado correctamente`, 'exito');
+          fetchData();
+        } catch (err) {
+          toast(err.message || 'Error al eliminar usuario', 'error');
+        }
+      },
+      onCancelar: () => setConfirm(null)
+    });
+  };
+
   const handleCambiarGrupo = async (userId, grupoId) => {
     try {
       await api.updateUsuarioGrupo(userId, grupoId === '' ? null : parseInt(grupoId));
@@ -162,6 +179,7 @@ export default function AdminUsuarios() {
                     <th>Rol</th>
                     <th>Grupo Actual</th>
                     <th>Cambiar Grupo</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,6 +194,17 @@ export default function AdminUsuarios() {
                           <option value="">Sin grupo (Individual)</option>
                           {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
                         </select>
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleEliminarUsuario(u.id, u.nombre_usuario)}
+                          className="btn btn-secondary btn-small text-red"
+                          style={{ borderColor: 'rgba(239, 68, 68, 0.3)', padding: '0.3rem', minHeight: '32px', minWidth: '32px' }}
+                          title="Eliminar usuario"
+                          aria-label={`Eliminar ${u.nombre_usuario}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}

@@ -123,6 +123,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ grupo_id: grupoId }),
     }),
+  deleteUser: (userId) =>
+    request(`/api/usuarios/${userId}`, {
+      method: 'DELETE',
+    }),
 
   // Clientes
   getClientes: () => request('/api/clientes'),
