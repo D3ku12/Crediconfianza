@@ -181,55 +181,124 @@ export default function AdminUsuarios() {
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem' }}>
-          <Link2 size={20} className="text-green" />
-          <h3 style={{ fontSize: '1.15rem', fontWeight: '700' }}>Asignar Usuarios a Grupos</h3>
-        </div>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--color-text)', marginBottom: '1rem' }}>
+          👥 Gestión de Usuarios
+        </h2>
         {usuarios.length === 0 ? (
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center' }}>No hay usuarios registrados.</p>
         ) : (
-          <div className="table-container">
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Usuario</th>
-                    <th>Rol</th>
-                    <th>Grupo Actual</th>
-                    <th>Cambiar Grupo</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usuarios.map((u) => (
-                    <tr key={u.id}>
-                      <td style={{ fontWeight: '600' }}>{u.nombre_usuario}</td>
-                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{u.username}</td>
-                      <td><span className={`badge ${u.es_admin ? 'warning' : 'success'}`} style={{ padding: '0.1rem 0.5rem', fontSize: '0.7rem' }}>{u.es_admin ? 'Admin' : 'Gestor'}</span></td>
-                      <td>{u.grupo_nombre ? <span style={{ fontWeight: '500', color: 'var(--accent)' }}>{u.grupo_nombre}</span> : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Individual</span>}</td>
-                      <td>
-                        <select className="form-control" value={u.grupo_id || ''} onChange={(e) => handleCambiarGrupo(u.id, e.target.value)} style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.8rem', height: '32px', minWidth: '140px' }} aria-label={`Cambiar grupo de ${u.nombre_usuario}`}>
-                          <option value="">Sin grupo (Individual)</option>
-                          {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
-                        </select>
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => handleEliminarUsuario(u.id, u.nombre_usuario)}
-                          className="btn btn-secondary btn-small text-red"
-                          style={{ borderColor: 'rgba(239, 68, 68, 0.3)', padding: '0.3rem', minHeight: '32px', minWidth: '32px' }}
-                          title="Eliminar usuario"
-                          aria-label={`Eliminar ${u.nombre_usuario}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {usuarios.map((u) => (
+              <div key={u.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '1rem',
+                background: 'var(--color-card-solid)',
+                borderRadius: '0.75rem',
+                border: '1px solid var(--color-border)',
+                flexWrap: 'wrap',
+              }}>
+                {/* Avatar + Info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1 1 200px', minWidth: 0 }}>
+                  <div style={{
+                    width: '40px', height: '40px', minWidth: '40px',
+                    borderRadius: '50%',
+                    background: 'var(--color-accent-soft)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: '700', color: 'var(--color-accent)', fontSize: '14px',
+                  }}>
+                    {u.nombre_usuario.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontWeight: '600', color: 'var(--color-text)', fontSize: '14px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {u.nombre_usuario}
+                    </p>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '12px', margin: '2px 0 0' }}>
+                      @{u.username}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Badge Rol */}
+                <span style={{
+                  padding: '2px 8px',
+                  borderRadius: '99px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  background: u.es_admin ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
+                  color: u.es_admin ? '#d97706' : '#059669',
+                  border: `1px solid ${u.es_admin ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.25)'}`,
+                  flexShrink: 0,
+                }}>
+                  {u.es_admin ? 'Admin' : 'Gestor'}
+                </span>
+
+                {/* Grupo actual + Selector */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flex: '1 1 auto',
+                  minWidth: '160px',
+                  flexWrap: 'wrap',
+                }}>
+                  {u.grupo_nombre ? (
+                    <span style={{ fontWeight: '500', color: 'var(--color-accent)', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                      {u.grupo_nombre}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                      Individual
+                    </span>
+                  )}
+                  <select
+                    value={u.grupo_id || ''}
+                    onChange={(e) => handleCambiarGrupo(u.id, e.target.value)}
+                    style={{
+                      fontSize: '13px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '0.5rem',
+                      padding: '8px 12px',
+                      background: 'var(--color-glass)',
+                      color: 'var(--color-text)',
+                      outline: 'none',
+                      minWidth: '150px',
+                      flex: '1 1 auto',
+                      cursor: 'pointer',
+                    }}
+                    aria-label={`Cambiar grupo de ${u.nombre_usuario}`}
+                  >
+                    <option value="">Sin grupo</option>
+                    {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+                  </select>
+                </div>
+
+                {/* Botón eliminar */}
+                <button
+                  onClick={() => handleEliminarUsuario(u.id, u.nombre_usuario)}
+                  style={{
+                    padding: '8px',
+                    color: '#f87171',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    minHeight: '38px',
+                    minWidth: '38px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                  title="Eliminar usuario"
+                  aria-label={`Eliminar ${u.nombre_usuario}`}
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
