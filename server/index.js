@@ -327,69 +327,84 @@ async function getSharedUserIds(userId, client = db) {
   return [userId];
 }
 
-// --- Lógica de Cálculo de Interés (Día Exacto del Mes Calendario) ---
-function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
-  const [y, m, d] = fechaInicioStr.split('T')[0].split('-').map(Number);
-  const fechaInicio = new Date(y, m - 1, d);
-  const hoy = new Date();
+// --- Helper: Obtener inicio del mes para un préstamo (respetando día exacto) ---
+function obtenerFechaInicioMes(fechaBase, mesesSumar) {
+  const [y, m, d] = [fechaBase.getFullYear(), fechaBase.getMonth(), fechaBase.getDate()];
+  const v = new Date(y, m + mesesSumar, d);
+  if (v.getDate() !== d) {
+    v.setDate(0);
+  }
+  v.setHours(0, 0, 0, 0);
+  return v;
+}
 
+// --- Lógica CORRECTA de Cálculo de Intereses (mes a mes sobre capital vigente) ---
+function calcularIntereses(prestamo, abonos) {
+  const capitalOriginal = parseFloat(prestamo.capital_original);
+  const tasa = parseFloat(prestamo.tasa_interes);
+  const [y, m, d] = prestamo.fecha_inicio.split('T')[0].split('-').map(Number);
+  const fechaInicio = new Date(y, m - 1, d);
   fechaInicio.setHours(0, 0, 0, 0);
+
+  const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  const capital = parseFloat(capitalPendiente);
-  const tasa = parseFloat(tasaMensual);
-  const interesMensual = capital * (tasa / 100);
+  // Ordenar abonos a capital por fecha ASC
+  const abonosCapital = (abonos || [])
+    .filter(a => a.tipo === 'capital')
+    .map(a => ({ monto: parseFloat(a.monto), fecha: new Date(a.fecha.substring(0, 10) + 'T00:00:00') }))
+    .sort((a, b) => a.fecha - b.fecha);
 
-  // Día del mes en que se creó el préstamo
-  const diaOrigen = fechaInicio.getDate();
+  const totalAbonoCapital = abonosCapital.reduce((s, a) => s + a.monto, 0);
+  const totalAbonoInteres = (abonos || [])
+    .filter(a => a.tipo === 'interes')
+    .reduce((s, a) => s + parseFloat(a.monto), 0);
 
-  // Función para obtener el próximo vencimiento mensual
-  // respetando el día exacto de origen y el día de gracia
-  function obtenerVencimiento(fechaBase, mesesSumar) {
-    const v = new Date(fechaBase);
-    v.setMonth(v.getMonth() + mesesSumar);
+  // Recorrer mes a mes desde fecha_inicio hasta hoy
+  let totalInteresGenerado = 0;
+  const desglose = [];
+  let monthIndex = 0;
+  let monthStart = obtenerFechaInicioMes(fechaInicio, 0);
 
-    // Si el mes destino no tiene ese día (ej: 31 en febrero)
-    // retrocede al último día válido del mes
-    if (v.getDate() !== diaOrigen) {
-      v.setDate(0);
+  while (monthStart < hoy) {
+    const monthEnd = obtenerFechaInicioMes(fechaInicio, monthIndex + 1);
+
+    // Capital vigente = capital_original - suma de abonos a capital ANTERIORES a este mes
+    let sumAbonosBeforeThisMonth = 0;
+    for (const ab of abonosCapital) {
+      if (ab.fecha < monthStart) {
+        sumAbonosBeforeThisMonth += ab.monto;
+      }
     }
-    return v;
+    const capitalEsteMes = Math.max(0, capitalOriginal - sumAbonosBeforeThisMonth);
+
+    // Si el capital llegó a 0, los siguientes meses no generan interés
+    if (capitalEsteMes <= 0) break;
+
+    const interesEsteMes = capitalEsteMes * (tasa / 100);
+    totalInteresGenerado += interesEsteMes;
+
+    desglose.push({
+      mes: monthIndex + 1,
+      inicio: monthStart.toISOString().substring(0, 10),
+      fin: monthEnd < hoy ? monthEnd.toISOString().substring(0, 10) : hoy.toISOString().substring(0, 10),
+      capital: Math.round(capitalEsteMes * 100) / 100,
+      interes: Math.round(interesEsteMes * 100) / 100,
+      abonosCapitalEsteMes: abonosCapital
+        .filter(ab => ab.fecha >= monthStart && ab.fecha < monthEnd)
+        .map(ab => ab.monto)
+    });
+
+    monthIndex++;
+    monthStart = obtenerFechaInicioMes(fechaInicio, monthIndex);
   }
 
-  // Contar cuántos meses calendario han vencido
-  // con día de gracia: el día exacto de vencimiento
-  // aún no cuenta el siguiente período
-  let mesesVencidos = 0;
-  let fechaVencimiento = obtenerVencimiento(fechaInicio, 1);
+  const capitalPendiente = Math.max(0, capitalOriginal - totalAbonoCapital);
+  const interesPendiente = Math.max(0, totalInteresGenerado - totalAbonoInteres);
+  const interesMensualActual = capitalPendiente > 0 ? capitalPendiente * (tasa / 100) : 0;
 
-  // Mientras el vencimiento del siguiente mes
-  // sea ANTES de hoy (no igual, eso es gracia)
-  while (fechaVencimiento < hoy) {
-    mesesVencidos++;
-    fechaVencimiento = obtenerVencimiento(fechaInicio, mesesVencidos + 1);
-  }
-
-  // Total = interés inicial + meses vencidos
-  const totalMeses = 1 + mesesVencidos;
-  const interesAcumulado = interesMensual * totalMeses;
-
-  // Días transcurridos para el label informativo
-  const diasTranscurridos = Math.floor(
-    (hoy - fechaInicio) / (1000 * 60 * 60 * 24)
-  );
-
-  // Próxima fecha de vencimiento
-  const proximoVencimiento = obtenerVencimiento(
-    fechaInicio, totalMeses
-  );
-
-  // Días para el próximo vencimiento
-  const diasParaVencer = Math.ceil(
-    (proximoVencimiento - hoy) / (1000 * 60 * 60 * 24)
-  );
-
-  // Label de tiempo transcurrido natural
+  // Tiempo transcurrido (informativo)
+  const diasTranscurridos = Math.floor((hoy - fechaInicio) / (1000 * 60 * 60 * 24));
   const mesesReales = Math.floor(diasTranscurridos / 30);
   const diasRestantes = diasTranscurridos % 30;
 
@@ -404,26 +419,26 @@ function calcularInteresTotal(capitalPendiente, tasaMensual, fechaInicioStr) {
     tiempoTexto = `${mesesReales} mes${mesesReales !== 1 ? 'es' : ''} y ${diasRestantes} día${diasRestantes !== 1 ? 's' : ''}`;
   }
 
-  const labelBase = mesesVencidos === 0
-    ? 'Interés inicial'
-    : `Interés inicial + ${mesesVencidos} tiempo${mesesVencidos !== 1 ? 's' : ''}`;
-
-  const label = `${labelBase} (${tiempoTexto})`;
+  // Próximo vencimiento
+  const proximoVencimiento = obtenerFechaInicioMes(fechaInicio, monthIndex + 1);
+  const diasParaVencer = Math.ceil((proximoVencimiento - hoy) / (1000 * 60 * 60 * 24));
 
   return {
-    diasTranscurridos,
-    interesAcumulado,
-    interesMensual,
-    interesDiario:     interesMensual / 30,
-    mesesVencidos,
-    totalMeses,
-    tiempoTexto,
-    label,
-    proximoVencimiento: proximoVencimiento
-      .toLocaleDateString('es-CO', {
-        day: '2-digit', month: 'long', year: 'numeric'
-      }),
-    diasParaVencer,
+    capital_original: capitalOriginal,
+    capital_pendiente: capitalPendiente,
+    tasa_interes: tasa,
+    interes_mensual_actual: Math.round(interesMensualActual * 100) / 100,
+    total_intereses_generados: Math.round(totalInteresGenerado * 100) / 100,
+    total_intereses_pagados: totalAbonoInteres,
+    interes_pendiente: Math.round(interesPendiente * 100) / 100,
+    total_abonado_capital: totalAbonoCapital,
+    dias_transcurridos: diasTranscurridos,
+    tiempo_texto: tiempoTexto,
+    proximo_vencimiento: proximoVencimiento.toLocaleDateString('es-CO', {
+      day: '2-digit', month: 'long', year: 'numeric'
+    }),
+    dias_para_vencer: diasParaVencer,
+    desglose
   };
 }
 
@@ -964,62 +979,48 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
     const prestamosCalculados = await Promise.all(
       prestamos.map(async (loan) => {
         const abonosRes = await db.query(
-          'SELECT monto, tipo FROM abonos WHERE prestamo_id = $1',
+          'SELECT monto, tipo, fecha FROM abonos WHERE prestamo_id = $1',
           [loan.id]
         );
         
         const abonos = abonosRes.rows;
-        
-        const totalAbonoInteres = abonos
-          .filter(a => a.tipo === 'interes')
-          .reduce((sum, a) => sum + parseFloat(a.monto), 0);
-          
-        const totalAbonoCapital = abonos
-          .filter(a => a.tipo === 'capital')
-          .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
         let calculo;
         try {
-          calculo = calcularInteresTotal(
-            loan.capital_pendiente,
-            loan.tasa_interes,
-            loan.fecha_inicio
-          );
+          calculo = calcularIntereses(loan, abonos);
         } catch (e) {
           console.error('Error calculando interés para préstamo', loan.id, e);
           calculo = {
-            diasTranscurridos: 0,
-            interesAcumulado: 0,
-            interesMensual: 0,
-            interesDiario: 0,
-            mesesVencidos: 0,
-            totalMeses: 1,
-            tiempoTexto: 'Sin calcular',
-            label: 'Sin calcular',
-            proximoVencimiento: 'Sin calcular',
-            diasParaVencer: 0,
+            capital_original: parseFloat(loan.capital_original),
+            capital_pendiente: parseFloat(loan.capital_pendiente),
+            tasa_interes: parseFloat(loan.tasa_interes),
+            interes_mensual_actual: 0,
+            total_intereses_generados: 0,
+            total_intereses_pagados: 0,
+            interes_pendiente: 0,
+            total_abonado_capital: 0,
+            dias_transcurridos: 0,
+            tiempo_texto: 'Sin calcular',
+            proximo_vencimiento: 'Sin calcular',
+            dias_para_vencer: 0,
+            desglose: []
           };
         }
-        const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
         
         return {
           ...loan,
-          capital_original: parseFloat(loan.capital_original),
-          capital_pendiente: parseFloat(loan.capital_pendiente),
-          tasa_interes: parseFloat(loan.tasa_interes),
-          dias_transcurridos: calculo.diasTranscurridos,
-          meses_adicionales: calculo.mesesVencidos,
-          total_meses_cobro: calculo.totalMeses,
-          interes_mensual: calculo.interesMensual,
-          interes_diario: calculo.interesDiario,
-          interes_acumulado: calculo.interesAcumulado,
-          interes_pendiente: interesPendiente,
-          tiempo_label: calculo.label,
-          tiempo_texto: calculo.tiempoTexto,
-          proximo_vencimiento: calculo.proximoVencimiento,
-          dias_para_vencer: calculo.diasParaVencer,
-          total_abonado_interes: totalAbonoInteres,
-          total_abonado_capital: totalAbonoCapital
+          capital_original: calculo.capital_original,
+          capital_pendiente: calculo.capital_pendiente,
+          tasa_interes: calculo.tasa_interes,
+          dias_transcurridos: calculo.dias_transcurridos,
+          interes_mensual: calculo.interes_mensual_actual,
+          interes_acumulado: calculo.total_intereses_generados,
+          interes_pendiente: calculo.interes_pendiente,
+          tiempo_texto: calculo.tiempo_texto,
+          proximo_vencimiento: calculo.proximo_vencimiento,
+          dias_para_vencer: calculo.dias_para_vencer,
+          total_abonado_interes: calculo.total_intereses_pagados,
+          total_abonado_capital: calculo.total_abonado_capital
         };
       })
     );
@@ -1191,20 +1192,15 @@ app.get('/api/prestamos/:id/estado-cuenta', authenticateToken, async (req, res) 
     );
     const abonos = abonosRes.rows;
 
-    const totalAbonoInteres = abonos
-      .filter(a => a.tipo === 'interes')
-      .reduce((sum, a) => sum + parseFloat(a.monto), 0);
     const totalAbonoCapital = abonos
       .filter(a => a.tipo === 'capital')
       .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
     const deudaOriginal = parseFloat(loan.capital_original);
-    const deudaRestante = parseFloat(loan.capital_pendiente);
+    const deudaRestante = Math.max(0, deudaOriginal - totalAbonoCapital);
 
-    const calculo = calcularInteresTotal(
-      loan.capital_pendiente, loan.tasa_interes, loan.fecha_inicio
-    );
-    const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
+    const calculo = calcularIntereses(loan, abonos);
+    const interesPendiente = calculo.interes_pendiente;
 
     const hoy = new Date().toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric'
@@ -1318,22 +1314,30 @@ app.get('/api/prestamos/:id/estado-cuenta', authenticateToken, async (req, res) 
       </tbody>
     </table>
   </div>
-  <div class="resumen-grid">
+  <div class="resumen-grid" style="grid-template-columns:1fr 1fr 1fr">
     <div class="resumen-card">
-      <div class="label">Deuda original</div>
+      <div class="label">Capital original</div>
       <div class="valor">$${deudaOriginal.toLocaleString('es-CO')}</div>
     </div>
     <div class="resumen-card">
-      <div class="label">Capital abonado</div>
-      <div class="valor success">$${totalAbonoCapital.toLocaleString('es-CO')}</div>
+      <div class="label">Capital pendiente</div>
+      <div class="valor danger">$${deudaRestante.toLocaleString('es-CO')}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Interés mensual actual</div>
+      <div class="valor">$${Math.round(calculo.interes_mensual_actual).toLocaleString('es-CO')}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Total intereses generados</div>
+      <div class="valor">$${Math.round(calculo.total_intereses_generados).toLocaleString('es-CO')}</div>
+    </div>
+    <div class="resumen-card">
+      <div class="label">Total intereses pagados</div>
+      <div class="valor success">$${Math.round(calculo.total_intereses_pagados).toLocaleString('es-CO')}</div>
     </div>
     <div class="resumen-card">
       <div class="label">Interés pendiente</div>
       <div class="valor danger">$${interesPendiente.toLocaleString('es-CO')}</div>
-    </div>
-    <div class="resumen-card">
-      <div class="label">Restante por pagar</div>
-      <div class="valor danger">$${deudaRestante.toLocaleString('es-CO')}</div>
     </div>
   </div>
   <div class="pie">
@@ -1729,7 +1733,8 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
     
     const prestamos = prestamosRes.rows;
     
-    let totalPrestado = 0; // Suma de capital original de préstamos activos
+    let totalPrestado = 0;
+    let totalCapitalPendiente = 0;
     let totalInteresesPendientes = 0;
     let totalCapitalRecuperado = 0;
     let totalInteresesCobrados = 0;
@@ -1739,56 +1744,45 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
     await Promise.all(
       prestamos.map(async (loan) => {
         const abonosRes = await db.query(
-          'SELECT monto, tipo FROM abonos WHERE prestamo_id = $1',
+          'SELECT monto, tipo, fecha FROM abonos WHERE prestamo_id = $1',
           [loan.id]
         );
         
         const abonos = abonosRes.rows;
-        
-        const totalAbonoInteres = abonos
-          .filter(a => a.tipo === 'interes')
-          .reduce((sum, a) => sum + parseFloat(a.monto), 0);
-          
-        const totalAbonoCapital = abonos
-          .filter(a => a.tipo === 'capital')
-          .reduce((sum, a) => sum + parseFloat(a.monto), 0);
 
         let calculo;
         try {
-          calculo = calcularInteresTotal(
-            loan.capital_pendiente,
-            loan.tasa_interes,
-            loan.fecha_inicio
-          );
+          calculo = calcularIntereses(loan, abonos);
         } catch (e) {
           console.error('Error calculando interés para préstamo', loan.id, e);
           calculo = {
-            diasTranscurridos: 0,
-            interesAcumulado: 0,
-            interesMensual: 0,
-            interesDiario: 0,
-            mesesVencidos: 0,
-            totalMeses: 1,
-            tiempoTexto: 'Sin calcular',
-            label: 'Sin calcular',
-            proximoVencimiento: 'Sin calcular',
-            diasParaVencer: 0,
+            capital_original: 0,
+            capital_pendiente: 0,
+            interes_mensual_actual: 0,
+            total_intereses_generados: 0,
+            total_intereses_pagados: 0,
+            interes_pendiente: 0,
+            total_abonado_capital: 0,
+            dias_transcurridos: 0,
+            tiempo_texto: 'Sin calcular',
+            proximo_vencimiento: 'Sin calcular',
+            dias_para_vencer: 0,
+            desglose: []
           };
         }
-        const interesPendiente = Math.max(0, calculo.interesAcumulado - totalAbonoInteres);
         
-        const capOrig = parseFloat(loan.capital_original);
-        const capPend = parseFloat(loan.capital_pendiente);
+        const capOrig = calculo.capital_original;
+        const capPend = calculo.capital_pendiente;
         
         if (loan.activo) {
           totalPrestado += capOrig;
-          totalInteresesPendientes += interesPendiente;
+          totalCapitalPendiente += capPend;
+          totalInteresesPendientes += calculo.interes_pendiente;
         }
         
-        totalCapitalRecuperado += totalAbonoCapital;
-        totalInteresesCobrados += totalAbonoInteres;
+        totalCapitalRecuperado += calculo.total_abonado_capital;
+        totalInteresesCobrados += calculo.total_intereses_pagados;
         
-        // Agrupar datos por deudor para la gráfica
         if (!deudoresDataMap[loan.deudor]) {
           deudoresDataMap[loan.deudor] = {
             deudor: loan.deudor,
@@ -1801,8 +1795,8 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
         
         deudoresDataMap[loan.deudor].capitalOriginal += capOrig;
         deudoresDataMap[loan.deudor].capitalPendiente += capPend;
-        deudoresDataMap[loan.deudor].interesesCobrados += totalAbonoInteres;
-        deudoresDataMap[loan.deudor].interesesPendientes += interesPendiente;
+        deudoresDataMap[loan.deudor].interesesCobrados += calculo.total_intereses_pagados;
+        deudoresDataMap[loan.deudor].interesesPendientes += calculo.interes_pendiente;
       })
     );
     
@@ -1811,6 +1805,7 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
     res.json({
       resumen: {
         totalPrestado,
+        capitalPendienteTotal: totalCapitalPendiente,
         interesesPendientes: totalInteresesPendientes,
         capitalRecuperado: totalCapitalRecuperado,
         interesesCobrados: totalInteresesCobrados,

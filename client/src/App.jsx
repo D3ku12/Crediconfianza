@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
-import { Shield, Bell } from 'lucide-react';
+import { Shield, Bell, Menu, X } from 'lucide-react';
 import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
 import { useTema } from './hooks/useTema';
@@ -29,6 +29,7 @@ export default function App() {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [prestamos, setPrestamos] = useState([]);
   const [verNotifs, setVerNotifs] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     api.getPrestamos().then(setPrestamos).catch(() => {});
@@ -125,7 +126,9 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         user={user} 
-        onLogout={handleLogout} 
+        onLogout={handleLogout}
+        isMobileOpen={mobileMenuOpen}
+        closeMobileMenu={() => setMobileMenuOpen(false)}
       />
       
       <main className="main-content">
@@ -174,6 +177,9 @@ export default function App() {
             </p>
           </div>
           
+          <button className="mobile-menu-trigger" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú">
+            <Menu size={24} />
+          </button>
           <div className="header-actions" style={{ flexShrink: 0 }}>
             <SelectorTema />
             <button className="notification-btn" aria-label="Notificaciones" onClick={() => setVerNotifs(!verNotifs)} style={{ position: 'relative' }}>

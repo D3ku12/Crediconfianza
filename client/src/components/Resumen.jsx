@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, memo } from 'react';
 import { api, formatCOP } from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock } from 'lucide-react';
+import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock, Ban } from 'lucide-react';
 
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, className }) {
   return (
@@ -29,7 +29,19 @@ const CustomTooltip = memo(function CustomTooltip({ active, payload, label }) {
   return null;
 });
 
+function useWindowSize() {
+  const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  useEffect(() => {
+    const handleResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  return size;
+}
+
 export default function Resumen() {
+  const { width: windowWidth } = useWindowSize();
+  const chartHeight = windowWidth < 768 ? 250 : 350;
   const [data, setData] = useState(null);
   const [prestamos, setPrestamos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +102,7 @@ export default function Resumen() {
   const cards = [
     { title: 'Disponible en Caja', value: formatCOP(resumen.saldoCaja || 0), icon: Wallet, className: 'positive' },
     { title: 'Total Prestado', value: formatCOP(resumen.totalPrestado || 0), icon: TrendingUp, className: 'positive' },
+    { title: 'Capital Pendiente Total', value: formatCOP(resumen.capitalPendienteTotal || 0), icon: Ban, className: 'positive' },
     { title: 'Intereses Pendientes', value: formatCOP(resumen.interesesPendientes || 0), icon: ShieldAlert, className: 'negative' },
     { title: 'Capital Recuperado', value: formatCOP(resumen.capitalRecuperado || 0), icon: ArrowDownLeft, className: 'positive' },
     { title: 'Intereses Cobrados', value: formatCOP(resumen.interesesCobrados || 0), icon: Percent, className: 'positive' },
@@ -141,11 +154,11 @@ export default function Resumen() {
           <p className="chart-subtitle">Capital pendiente e intereses pendientes acumulados por cada cliente</p>
         </div>
         {grafica.length === 0 ? (
-          <div style={{ height: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '0.75rem', border: '1px dashed var(--border-color)' }}>
+          <div style={{ height: `${chartHeight}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '0.75rem', border: '1px dashed var(--border-color)' }}>
             <p style={{ color: 'var(--text-muted)' }}>No hay préstamos registrados para mostrar la gráfica.</p>
           </div>
         ) : (
-          <div className="chart-wrapper">
+          <div className="chart-wrapper" style={{ height: `${chartHeight}px`, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={grafica} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />

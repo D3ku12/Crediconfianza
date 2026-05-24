@@ -255,7 +255,9 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     </div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Capital</span><span style={{ fontWeight: '600' }}>{formatCOP(loan.capital_original)}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Pendiente</span><span className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.capital_pendiente)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span><span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', fontStyle: 'italic', marginTop: '2px' }}>🕐 {loan.tiempo_texto}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Mensual</span><span style={{ fontWeight: '600' }}>{formatCOP(loan.interes_mensual)}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span></div>
+                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Cobrados</span><span className="text-green" style={{ fontWeight: '600' }}>{formatCOP(loan.total_abonado_interes)}</span></div>
                     <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Tiempo</span><span style={{ fontWeight: '500' }}>{loan.tasa_interes}% · {loan.tiempo_texto}</span></div>
                   </div>
                   {/* Próximo vencimiento */}
@@ -336,10 +338,11 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                       <th>Deudor</th>
                       <th>Capital Original</th>
                       <th>Capital Pendiente</th>
-                      <th>Tasa</th>
-                      <th>Fecha Inicio</th>
-                      <th>Tiempo</th>
+                      <th>Int. Mensual Actual</th>
                       <th>Int. Pendiente</th>
+                      <th>Int. Cobrados</th>
+                      <th>Tasa</th>
+                      <th>Desde</th>
                       <th>Estado</th>
                       <th>Acciones</th>
                     </tr>
@@ -360,10 +363,11 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                             <td style={{ fontWeight: '600' }}>{loan.deudor}</td>
                             <td>{formatCOP(loan.capital_original)}</td>
                             <td className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.capital_pendiente)}</td>
-                            <td>{loan.tasa_interes}%</td>
-                            <td>{formatFecha(loan.fecha_inicio)}</td>
-                            <td style={{ fontSize: '12px', fontStyle: 'italic' }}>{loan.tiempo_texto}</td>
+                            <td className={loan.interes_mensual > 0 ? 'text-yellow' : ''} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_mensual)}</td>
                             <td className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_pendiente)}</td>
+                            <td className="text-green" style={{ fontWeight: '500' }}>{formatCOP(loan.total_abonado_interes)}</td>
+                            <td>{loan.tasa_interes}%</td>
+                            <td style={{ fontSize: '12px' }}>{formatFecha(loan.fecha_inicio)}</td>
                             <td><span className={`badge ${isActivo ? 'danger' : 'success'}`}>{isActivo ? 'Activo' : 'Pagado'}</span></td>
                             <td>
                               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -376,7 +380,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                           </tr>
                           {isExpanded && (
                             <tr className="details-row">
-                              <td colSpan={10}>
+                              <td colSpan={11}>
                                 <div className="details-wrapper">
                                   <h4 className="subtable-title"><Receipt size={14} />Historial de Abonos</h4>
                                   {loadingAbonos && !loanAbonos[loan.id] ? (
@@ -417,113 +421,115 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '520px' }}>
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setIsModalOpen(false)} aria-label="Cerrar">×</button>
             <h3 className="modal-title">{editingLoanId ? 'Editar Préstamo' : 'Nuevo Préstamo'}</h3>
 
-            {cajaSaldo !== null && !editingLoanId && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.65rem 1rem', borderRadius: '0.75rem',
-                background: cajaSaldo >= capitalNumerico ? 'var(--success-bg)' : 'var(--danger-bg)',
-                border: `1px solid ${cajaSaldo >= capitalNumerico ? 'var(--success-border)' : 'var(--danger-border)'}`,
-                marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: '500'
-              }}>
-                <DollarSign size={16} className={cajaSaldo >= capitalNumerico ? 'text-green' : 'text-red'} />
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  Disponible en caja: <strong className={cajaSaldo >= capitalNumerico ? 'text-green' : 'text-red'}>{formatCOP(cajaSaldo)}</strong>
-                  {capitalNumerico > 0 && (
-                    <> — {cajaSaldo >= capitalNumerico ? 'Fondos suficientes ✅' : '⚠️ Saldo insuficiente'}</>
-                  )}
-                </span>
-              </div>
-            )}
-
-            {modalError && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{modalError}</div>}
-
-            <form onSubmit={handleCreatePrestamo}>
-              <div className="form-group">
-                <label style={{ fontSize: '13px', color: 'var(--color-text-soft)', fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                  Cliente *
-                </label>
-                {clientes.length === 0 ? (
-                  <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-accent-soft)', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-                    ⚠️ No hay clientes registrados.{' '}
-                    <span
-                      style={{ color: 'var(--color-accent)', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
-                      onClick={() => setActiveTab('clientes')}
-                    >
-                      Crea un cliente primero
+            <form onSubmit={handleCreatePrestamo} id="loan-form" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div className="modal-body">
+                {cajaSaldo !== null && !editingLoanId && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.65rem 1rem', borderRadius: '0.75rem',
+                    background: cajaSaldo >= capitalNumerico ? 'var(--success-bg)' : 'var(--danger-bg)',
+                    border: `1px solid ${cajaSaldo >= capitalNumerico ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                    marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: '500'
+                  }}>
+                    <DollarSign size={16} className={cajaSaldo >= capitalNumerico ? 'text-green' : 'text-red'} />
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      Disponible en caja: <strong className={cajaSaldo >= capitalNumerico ? 'text-green' : 'text-red'}>{formatCOP(cajaSaldo)}</strong>
+                      {capitalNumerico > 0 && (
+                        <> — {cajaSaldo >= capitalNumerico ? 'Fondos suficientes ✅' : '⚠️ Saldo insuficiente'}</>
+                      )}
                     </span>
                   </div>
-                ) : (
-                  <select
-                    value={clienteSeleccionado}
-                    onChange={e => {
-                      setClienteSeleccionado(e.target.value);
-                      const c = clientes.find(cl => cl.id === parseInt(e.target.value));
-                      if (c) setDeudor(c.nombre);
-                    }}
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-glass)', color: clienteSeleccionado ? 'var(--color-text)' : 'var(--color-text-muted)', fontSize: '16px', fontFamily: 'inherit', outline: 'none', marginBottom: '12px', cursor: 'pointer' }}
-                    disabled={editingLoanId}
-                  >
-                    <option value="" disabled>Selecciona un cliente</option>
-                    {clientes.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
-                        {parseFloat(c.deuda_total) > 0
-                          ? ` — Deuda: $${parseFloat(c.deuda_total).toLocaleString('es-CO')}`
-                          : ' — Sin deuda activa'}
-                      </option>
-                    ))}
-                  </select>
                 )}
-              </div>
 
-              <div className="form-group">
-                <label htmlFor="modal-capital">Capital Original (COP) *</label>
-                <div style={{ position: 'relative' }}>
-                  <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input id="modal-capital" type="text" inputMode="decimal" className="form-control" placeholder="monto en COP (ej: 1.000.000)" value={capitalDisplay} onChange={(e) => setCapitalDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                {modalError && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{modalError}</div>}
+
+                <div className="form-group">
+                  <label style={{ fontSize: '13px', color: 'var(--color-text-soft)', fontWeight: '500', display: 'block', marginBottom: '6px' }}>
+                    Cliente *
+                  </label>
+                  {clientes.length === 0 ? (
+                    <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-accent-soft)', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+                      ⚠️ No hay clientes registrados.{' '}
+                      <span
+                        style={{ color: 'var(--color-accent)', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                        onClick={() => setActiveTab('clientes')}
+                      >
+                        Crea un cliente primero
+                      </span>
+                    </div>
+                  ) : (
+                    <select
+                      value={clienteSeleccionado}
+                      onChange={e => {
+                        setClienteSeleccionado(e.target.value);
+                        const c = clientes.find(cl => cl.id === parseInt(e.target.value));
+                        if (c) setDeudor(c.nombre);
+                      }}
+                      style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-glass)', color: clienteSeleccionado ? 'var(--color-text)' : 'var(--color-text-muted)', fontSize: '16px', fontFamily: 'inherit', outline: 'none', marginBottom: '12px', cursor: 'pointer' }}
+                      disabled={editingLoanId}
+                    >
+                      <option value="" disabled>Selecciona un cliente</option>
+                      {clientes.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre}
+                          {parseFloat(c.deuda_total) > 0
+                            ? ` — Deuda: $${parseFloat(c.deuda_total).toLocaleString('es-CO')}`
+                            : ' — Sin deuda activa'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="modal-capital">Capital Original (COP) *</label>
+                  <div style={{ position: 'relative' }}>
+                    <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input id="modal-capital" type="text" inputMode="decimal" className="form-control" placeholder="monto en COP (ej: 1.000.000)" value={capitalDisplay} onChange={(e) => setCapitalDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="modal-tasa">Tasa de Interés (% Mensual)</label>
+                  <div style={{ position: 'relative' }}>
+                    <Percent size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input id="modal-tasa" type="number" min="0" step="0.01" className="form-control" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                  </div>
+                </div>
+
+                {capitalNumerico > 0 && tasaNum > 0 && (
+                  <div style={{
+                    background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
+                    borderRadius: '12px', padding: '16px', marginBottom: '20px'
+                  }}>
+                    <p style={{ fontSize: '13px', color: 'var(--color-primary)', margin: 0 }}>
+                      💡 Interés mensual estimado:{' '}
+                      <strong>
+                        ${interesMensualPreview.toLocaleString('es-CO')}
+                      </strong>
+                    </p>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label htmlFor="modal-fecha">Fecha de Inicio *</label>
+                  <div style={{ position: 'relative' }}>
+                    <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input id="modal-fecha" type="date" className="form-control" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                  </div>
                 </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="modal-tasa">Tasa de Interés (% Mensual)</label>
-                <div style={{ position: 'relative' }}>
-                  <Percent size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input id="modal-tasa" type="number" min="0" step="0.01" className="form-control" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
-                </div>
-              </div>
-
-              {capitalNumerico > 0 && tasaNum > 0 && (
-                <div style={{
-                  background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-                  border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
-                  borderRadius: '12px', padding: '16px', marginBottom: '20px'
-                }}>
-                  <p style={{ fontSize: '13px', color: 'var(--color-primary)', margin: 0 }}>
-                    💡 Interés mensual estimado:{' '}
-                    <strong>
-                      ${interesMensualPreview.toLocaleString('es-CO')}
-                    </strong>
-                  </p>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label htmlFor="modal-fecha">Fecha de Inicio *</label>
-                <div style={{ position: 'relative' }}>
-                  <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input id="modal-fecha" type="date" className="form-control" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)} disabled={creating} style={{ minWidth: '44px', minHeight: '44px' }}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={creating} style={{ minWidth: '44px', minHeight: '44px' }}>
-                  {creating ? 'Guardando...' : (editingLoanId ? 'Guardar Cambios' : 'Crear Préstamo')}
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)} disabled={creating} style={{ flex: 1, minHeight: '44px' }}>Cancelar</button>
+                <button type="submit" className="btn btn-success" disabled={creating} style={{ flex: 1, minHeight: '44px', fontWeight: '700' }}>
+                  {creating ? 'Guardando...' : (editingLoanId ? 'Actualizar préstamo' : 'Guardar préstamo')}
                 </button>
               </div>
             </form>

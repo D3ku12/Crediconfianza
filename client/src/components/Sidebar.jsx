@@ -1,22 +1,25 @@
 import React from 'react';
-import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, User } from 'lucide-react';
+import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, X } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
+export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMobileOpen, closeMobileMenu }) {
   const menuItems = [
     { id: 'resumen', label: 'Resumen', icon: BarChart3 },
     { id: 'prestamos', label: 'Préstamos', icon: CircleDollarSign },
-    { id: 'clientes', label: 'Clientes', icon: User },
     { id: 'abonos', label: 'Abonos', icon: Receipt },
     { id: 'caja', label: 'Caja', icon: Wallet },
   ];
 
-  // Agregar menú de administración solo si el usuario es administrador
   if (user && user.es_admin) {
     menuItems.push({ id: 'usuarios', label: 'Administración', icon: Users });
   }
 
-  return (
-    <aside className="sidebar">
+  const handleNavClick = (id) => {
+    setActiveTab(id);
+    if (closeMobileMenu) closeMobileMenu();
+  };
+
+  const navContent = (
+    <>
       <div className="logo-container">
         <span className="logo-icon">🤝</span>
         <span className="logo-text">CREDIALIADO</span>
@@ -29,13 +32,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
             <li key={item.id}>
               <div
                 className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(item.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && setActiveTab(item.id)}
-                aria-label={`Ir a ${item.label}`}
-                aria-current={activeTab === item.id ? 'page' : undefined}
-                style={{ minHeight: '44px', cursor: 'pointer' }}
+                onClick={() => handleNavClick(item.id)}
               >
                 <Icon className="nav-icon" size={20} />
                 <span>{item.label}</span>
@@ -45,7 +42,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
         })}
         
         <li>
-          <div className="nav-item logout-btn" onClick={onLogout} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onLogout()} aria-label="Cerrar sesión" style={{ marginTop: '2rem', minHeight: '44px', cursor: 'pointer' }}>
+          <div className="nav-item logout-btn" onClick={onLogout} style={{ marginTop: '2rem' }}>
             <LogOut size={20} />
             <span>Cerrar Sesión</span>
           </div>
@@ -81,6 +78,25 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
           </div>
         </div>
       )}
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <aside className="sidebar">
+        {navContent}
+      </aside>
+
+      {isMobileOpen && (
+        <div className="sidebar-overlay" onClick={closeMobileMenu}>
+          <aside className="sidebar-drawer" onClick={(e) => e.stopPropagation()}>
+            <button className="drawer-close" onClick={closeMobileMenu} aria-label="Cerrar menú">
+              <X size={24} />
+            </button>
+            {navContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
