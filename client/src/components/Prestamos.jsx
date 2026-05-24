@@ -100,6 +100,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
           tasa_interes: parseFloat(tasaInteres),
           fecha_inicio: fechaInicio,
           concepto: concepto || null,
+          cliente_id: clienteSeleccionado ? parseInt(clienteSeleccionado) : null,
         };
         if (capitalPendienteDisplay) {
           body.capital_pendiente = limpiar(capitalPendienteDisplay);
@@ -133,7 +134,11 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     }
   };
 
-  const handleEditClick = (loan) => {
+  const handleEditClick = async (loan) => {
+    try {
+      const data = await api.getClientes();
+      setClientes(Array.isArray(data) ? data : []);
+    } catch {}
     setDeudor(loan.deudor);
     setClienteSeleccionado(loan.cliente_id ? String(loan.cliente_id) : '');
     setCapitalDisplay(String(loan.capital_original).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
@@ -331,8 +336,31 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     </span>
                   </div>
                   )}
-                  <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
-                    {isActivo && <button className="btn btn-primary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ flex: 1, minHeight: '44px' }}><Receipt size={14} /> Abonar</button>}
+                  {/* Grid móvil: Abonar + PDF */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                    {isActivo && (
+                      <button onClick={() => handleQuickAbonar(loan)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        background: 'var(--color-primary)', color: 'var(--color-on-primary)',
+                        border: 'none', borderRadius: 'var(--radius-md)',
+                        padding: '12px', fontSize: '14px', fontWeight: '600',
+                        cursor: 'pointer', minHeight: '44px',
+                      }}>
+                        💰 Abonar
+                      </button>
+                    )}
+                    <button onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      background: 'var(--color-glass)', color: 'var(--color-text)',
+                      border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+                      padding: '12px', fontSize: '14px', fontWeight: '500',
+                      cursor: 'pointer', minHeight: '44px',
+                    }}>
+                      {generandoPDF === loan.id ? 'Generando...' : '📄 PDF'}
+                    </button>
+                  </div>
+                  {/* Botones secundarios: editar, eliminar, expandir */}
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '8px' }}>
                     <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
                     <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
                     <button onClick={() => handleToggleExpand(loan.id)} className="btn btn-secondary btn-small" style={{ minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
@@ -512,7 +540,6 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                         if (c) setDeudor(c.nombre);
                       }}
                       style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-glass)', color: clienteSeleccionado ? 'var(--color-text)' : 'var(--color-text-muted)', fontSize: '16px', fontFamily: 'inherit', outline: 'none', marginBottom: '12px', cursor: 'pointer' }}
-                      disabled={editingLoanId}
                     >
                       <option value="" disabled>Selecciona un cliente</option>
                       {clientes.map(c => (

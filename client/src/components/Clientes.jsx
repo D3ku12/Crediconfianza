@@ -7,6 +7,7 @@ const Clientes = memo(function Clientes() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [clienteEditando, setClienteEditando] = useState(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState(null);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     nombre: '', telefono: '', descripcion: ''
   });
@@ -15,10 +16,12 @@ const Clientes = memo(function Clientes() {
   const cargarClientes = async () => {
     try {
       setCargando(true);
+      setError('');
       const data = await api.getClientes();
       setClientes(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error al cargar clientes:', error);
+      setError('Error al cargar clientes. Verifica tu conexión.');
     } finally {
       setCargando(false);
     }
@@ -62,6 +65,29 @@ const Clientes = memo(function Clientes() {
       cargarClientes();
     } catch (error) {
       console.error('Error al guardar cliente:', error);
+    }
+  };
+
+  // ── Importar desde contactos (solo móvil) ──
+  const soportaContactos = 'contacts' in navigator && 'ContactsManager' in window;
+
+  const agregarDesdeContactos = async () => {
+    try {
+      const props = ['name', 'tel'];
+      const opts = { multiple: false };
+      const contactos = await navigator.contacts.select(props, opts);
+      if (contactos.length > 0) {
+        const contacto = contactos[0];
+        setFormData({
+          nombre: contacto.name?.[0] || '',
+          telefono: contacto.tel?.[0] || '',
+          descripcion: ''
+        });
+        setClienteEditando(null);
+        setMostrarFormulario(true);
+      }
+    } catch (error) {
+      console.error('Error al acceder a contactos:', error);
     }
   };
 
@@ -124,7 +150,31 @@ const Clientes = memo(function Clientes() {
   };
 
   return (
-    <div style={{ padding: '16px', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ padding: '16px', maxWidth: '800px', margin: '0 auto', minHeight: '50vh' }}>
+
+      {/* ── ERROR ── */}
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          marginBottom: '16px',
+          borderRadius: 'var(--radius-md)',
+          background: 'rgba(239,68,68,0.08)',
+          border: '1px solid rgba(239,68,68,0.2)',
+          color: 'var(--color-danger)',
+          fontSize: '13px',
+          textAlign: 'center',
+        }}>
+          {error}
+          <button onClick={cargarClientes} style={{
+            marginLeft: '8px',
+            textDecoration: 'underline',
+            background: 'none',
+            border: 'none',
+            color: 'inherit',
+            cursor: 'pointer',
+          }}>Reintentar</button>
+        </div>
+      )}
 
       {/* ── ENCABEZADO ── */}
       <div style={{
@@ -152,9 +202,21 @@ const Clientes = memo(function Clientes() {
             {clientes.length} cliente{clientes.length !== 1 ? 's' : ''} registrado{clientes.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button onClick={abrirNuevo} style={btnPrimary}>
-          + Nuevo cliente
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {soportaContactos && (
+            <button onClick={agregarDesdeContactos} style={{
+              ...btnPrimary,
+              background: 'transparent',
+              border: '1px dashed var(--color-border)',
+              color: 'var(--color-text)',
+            }}>
+              📱 Agregar desde contactos
+            </button>
+          )}
+          <button onClick={abrirNuevo} style={btnPrimary}>
+            + Nuevo cliente
+          </button>
+        </div>
       </div>
 
       {/* ── CARGANDO ── */}
