@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
-import { Shield, Bell, Menu, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal, X } from 'lucide-react';
+import { Shield, Bell, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal } from 'lucide-react';
 import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
 import { useTema } from './hooks/useTema';
@@ -41,7 +41,6 @@ export default function App() {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [prestamos, setPrestamos] = useState([]);
   const [verNotifs, setVerNotifs] = useState(false);
-  const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [showMobileMore, setShowMobileMore] = useState(false);
 
   useEffect(() => {
@@ -115,10 +114,6 @@ export default function App() {
     }
   };
 
-  const userMenuItems = user?.es_admin
-    ? [...menuItems, { id: 'usuarios', label: 'Usuarios', icon: Shield }]
-    : menuItems;
-
   const mobileNavItems = [
     { id: 'resumen', icon: BarChart3, label: 'Resumen' },
     { id: 'prestamos', icon: CircleDollarSign, label: 'Pr\u00e9stamos' },
@@ -138,71 +133,6 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Mobile Drawer */}
-      <div
-        className={`md:hidden fixed inset-0 z-50 transition-all duration-300 ${drawerAbierto ? 'visible' : 'invisible'}`}
-      >
-        <div
-          className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${drawerAbierto ? 'opacity-100' : 'opacity-0'}`}
-          onClick={() => setDrawerAbierto(false)}
-        />
-        <aside
-          className={`absolute left-0 top-0 h-full w-[280px] bg-gray-900 shadow-2xl transition-transform duration-300 overflow-y-auto ${drawerAbierto ? 'translate-x-0' : '-translate-x-full'}`}
-        >
-          <div className="p-6 min-h-full flex flex-col relative">
-            {/* Logo */}
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">C</div>
-              <span className="font-bold text-lg text-white">Credialiado</span>
-            </div>
-
-            {/* Navigation items */}
-            <nav className="flex-1">
-              {userMenuItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => { setActiveTab(item.id); setDrawerAbierto(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all text-left ${
-                      isActive
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                    }`}
-                  >
-                    <Icon size={20} />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-
-            {/* User section at bottom */}
-            {user && (
-              <div className="mt-6">
-                <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl">
-                  <div className="w-9 h-9 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                    {user.nombre_usuario?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">{user.nombre_usuario}</p>
-                    <p className="text-gray-400 text-xs">{user.es_admin ? 'Administrador' : 'Gestor'}</p>
-                  </div>
-                  <button
-                    onClick={() => { handleLogout(); setDrawerAbierto(false); }}
-                    className="text-gray-400 hover:text-red-400 transition-colors text-lg flex-shrink-0"
-                    aria-label="Cerrar sesi\u00f3n"
-                  >
-                    🚪
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
-      </div>
-
       {/* Main content area */}
       <main className="ml-0 md:ml-[260px] min-h-screen overflow-x-hidden flex flex-col">
         {/* Fixed Header */}
@@ -210,13 +140,6 @@ export default function App() {
           className="fixed top-0 right-0 left-0 md:left-[260px] z-30 h-14 flex items-center gap-3 px-4 border-b shadow-sm"
           style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}
         >
-          <button
-            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-black/5"
-            onClick={() => setDrawerAbierto(true)}
-            aria-label="Abrir men\u00fa"
-          >
-            <Menu size={22} />
-          </button>
           <h1 className="text-lg font-bold truncate flex-1" style={{ color: 'var(--color-text)' }}>
             {getTabTitle()}
           </h1>

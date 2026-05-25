@@ -190,7 +190,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
               <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Tasa mensual:</span><span className="font-medium" style={{ color: 'var(--color-text)' }}>{selectedLoanData.tasa_interes}% mensual</span></div>
               <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Interés mensual:</span><span className="font-medium font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(selectedLoanData.interes_mensual)}</span></div>
               <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Fecha de Inicio:</span><span style={{ color: 'var(--color-text)' }}>{formatFecha(selectedLoanData.fecha_inicio)}</span></div>
-              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Tiempo:</span><span className="text-xs italic" style={{ color: 'var(--color-text-muted)' }}>{selectedLoanData.tiempo_label}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Tiempo:</span><span className="text-xs italic" style={{ color: 'var(--color-text-muted)' }}>{selectedLoanData.tiempo_texto}</span></div>
               <div className="flex justify-between pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}><span style={{ color: 'var(--color-text-secondary)' }}>Interés Acumulado:</span><span className="font-medium font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(selectedLoanData.interes_acumulado)}</span></div>
               <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Abonado a Intereses:</span><span className="font-medium font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(selectedLoanData.total_abonado_interes)}</span></div>
               <div className="p-3 rounded-xl text-sm font-bold" style={{ background: 'var(--color-accent-soft)' }}>
@@ -210,7 +210,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
                 border: `1px solid ${selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-border)' : 'rgba(245,158,11,0.2)'}`,
                 color: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-text)' : 'var(--warning-text)',
               }}>
-                {selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? '⚠️ Más de 3 meses de intereses sin pagar' : `🕐 ${selectedLoanData.tiempo_label} — sin abonar`}
+                {selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? '⚠️ Más de 3 meses de intereses sin pagar' : `🕐 ${selectedLoanData.tiempo_texto} — sin abonar`}
               </div>
             )}
           </div>
