@@ -24,11 +24,13 @@ const Clientes = memo(function Clientes() {
 
   const guardar = async () => {
     if (!formData.nombre.trim()) return;
+    if (!formData.telefono.trim()) { setError('El teléfono es requerido.'); return; }
     try {
+      setError('');
       const datos = { nombre: formData.nombre.trim(), telefono: formData.telefono.trim(), descripcion: formData.descripcion.trim() };
       if (clienteEditando) { await api.updateCliente(clienteEditando.id, datos); } else { await api.createCliente(datos); }
       setMostrarFormulario(false); cargarClientes();
-    } catch (error) { console.error('Error al guardar cliente:', error); }
+    } catch (error) { setError(error.message || 'Error al guardar cliente.'); }
   };
 
   const soportaContactos = 'contacts' in navigator && 'ContactsManager' in window;
