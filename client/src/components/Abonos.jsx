@@ -131,9 +131,20 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
               </div>
             </div>
             {selectedLoanData && montoNumerico > 0 && tipo === 'capital' && montoNumerico > parseFloat(selectedLoanData.capital_pendiente) && (
-              <div className="px-3 py-2 rounded-xl text-xs font-medium" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}>
-                ⚠️ El abono a capital no puede exceder {formatCOP(selectedLoanData.capital_pendiente)}
-              </div>
+              (() => {
+                const capPend = parseFloat(selectedLoanData.capital_pendiente);
+                const intPend = parseFloat(selectedLoanData.interes_pendiente || 0);
+                const deudaTotal = capPend + intPend;
+                if (montoNumerico > deudaTotal) {
+                  return <div className="px-3 py-2 rounded-xl text-xs font-medium" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}>
+                    ⚠️ El monto supera la deuda total de {formatCOP(deudaTotal)}
+                  </div>;
+                }
+                const exceso = montoNumerico - capPend;
+                return <div className="px-3 py-2 rounded-xl text-xs font-medium" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: 'var(--warning-text)' }}>
+                  ℹ️ Se asignarán {formatCOP(capPend)} a capital y {formatCOP(exceso)} a intereses
+                </div>;
+              })()
             )}
             <div>
               <label htmlFor="abono-fecha" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Fecha de Pago *</label>
