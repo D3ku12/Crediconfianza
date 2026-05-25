@@ -43,7 +43,13 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
     const valorMonto = limpiar(montoDisplay);
     if (valorMonto <= 0) { setError('El monto del abono debe ser mayor a cero.'); return; }
     const activeLoan = prestamos.find(p => p.id.toString() === selectedLoanId);
-    if (tipo === 'capital' && activeLoan && valorMonto > parseFloat(activeLoan.capital_pendiente)) { setError(`El abono a capital no puede superar el capital pendiente de ${formatCOP(activeLoan.capital_pendiente)}.`); return; }
+    if (tipo === 'capital' && activeLoan) {
+      const capPend = parseFloat(activeLoan.capital_pendiente);
+      const intPend = parseFloat(activeLoan.interes_pendiente || 0);
+      const deudaTotal = capPend + intPend;
+      if (valorMonto > deudaTotal) { setError(`El monto supera la deuda total de ${formatCOP(deudaTotal)} (capital ${formatCOP(capPend)} + intereses ${formatCOP(intPend)}).`); return; }
+      if (valorMonto > capPend && intPend <= 0) { setError(`No puede exceder el capital pendiente de ${formatCOP(capPend)} porque no hay intereses pendientes.`); return; }
+    }
     setSubmitting(true); setError('');
     try {
       await api.createAbono({ prestamo_id: parseInt(selectedLoanId), monto: valorMonto, tipo, fecha, nota });
