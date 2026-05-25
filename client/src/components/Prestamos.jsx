@@ -52,7 +52,16 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     }
   };
 
-  useEffect(() => { fetchPrestamos(); }, [refreshKey]);
+  const refreshPrestamos = async () => {
+    try {
+      const data = await api.getPrestamos();
+      setPrestamos(data);
+    } catch (err) { /* silent */ }
+  };
+
+  useEffect(() => { fetchPrestamos(); }, []);
+
+  useEffect(() => { if (refreshKey > 0) refreshPrestamos(); }, [refreshKey]);
 
   useEffect(() => {
     const cargarClientes = async () => {

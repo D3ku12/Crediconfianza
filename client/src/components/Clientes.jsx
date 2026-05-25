@@ -19,7 +19,14 @@ const Clientes = memo(function Clientes() {
     finally { setCargando(false); }
   };
 
-  useEffect(() => { cargarClientes(); }, [refreshKey]);
+  const refrescarClientes = async () => {
+    try { const data = await api.getClientes(); setClientes(Array.isArray(data) ? data : []); }
+    catch (error) { /* silent */ }
+  };
+
+  useEffect(() => { cargarClientes(); }, []);
+
+  useEffect(() => { if (refreshKey > 0) refrescarClientes(); }, [refreshKey]);
 
   const abrirNuevo = () => { setFormData({ nombre: '', telefono: '', descripcion: '' }); setClienteEditando(null); setMostrarFormulario(true); };
   const abrirEditar = (cliente) => { setFormData({ nombre: cliente.nombre || '', telefono: cliente.telefono || '', descripcion: cliente.descripcion || '' }); setClienteEditando(cliente); setMostrarFormulario(true); };

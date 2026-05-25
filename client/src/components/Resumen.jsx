@@ -80,7 +80,17 @@ export default function Resumen() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [refreshKey]);
+  const refreshData = async () => {
+    try {
+      const [res, loans] = await Promise.all([api.getResumen(), api.getPrestamos()]);
+      setData(res);
+      setPrestamos(loans);
+    } catch (err) { /* silent */ }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => { if (refreshKey > 0) refreshData(); }, [refreshKey]);
 
   const prestamosEnRiesgo = useMemo(() => {
     const hoy = new Date();

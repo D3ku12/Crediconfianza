@@ -31,7 +31,18 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
     finally { setLoadingLoans(false); }
   };
 
-  useEffect(() => { fetchLoans(); }, [selectedLoan, refreshKey]);
+  const refreshLoans = async () => {
+    try {
+      const data = await api.getPrestamos();
+      const activos = data.filter(p => parseFloat(p.capital_pendiente) > 0);
+      setPrestamos(activos);
+      if (selectedLoan) setSelectedLoanId(selectedLoan.id.toString());
+    } catch (err) { /* silent */ }
+  };
+
+  useEffect(() => { fetchLoans(); }, [selectedLoan]);
+
+  useEffect(() => { if (refreshKey > 0) refreshLoans(); }, [refreshKey]);
 
   const handleLoanChange = (e) => {
     const id = e.target.value; setSelectedLoanId(id); setError('');

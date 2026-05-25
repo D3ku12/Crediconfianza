@@ -31,7 +31,14 @@ export default function AdminUsuarios() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchData(); }, [refreshKey]);
+  const refreshData = async () => {
+    try { const [gruposData, usuariosData] = await Promise.all([api.getGrupos(), api.getUsuarios()]); setGrupos(gruposData); setUsuarios(usuariosData); }
+    catch (err) { /* silent */ }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => { if (refreshKey > 0) refreshData(); }, [refreshKey]);
 
   const handleCrearGrupo = async (e) => {
     e.preventDefault();

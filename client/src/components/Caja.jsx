@@ -41,7 +41,16 @@ export default function Caja() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchCajaData(); }, [refreshKey]);
+  const refreshCajaData = async () => {
+    try {
+      const [saldoRes, transRes] = await Promise.all([api.getCajaSaldo(), api.getCajaTransacciones()]);
+      setSaldo(saldoRes.saldo); setTransacciones(transRes);
+    } catch (err) { /* silent */ }
+  };
+
+  useEffect(() => { fetchCajaData(); }, []);
+
+  useEffect(() => { if (refreshKey > 0) refreshCajaData(); }, [refreshKey]);
 
   const handleTipoChange = (newTipo) => { setTipo(newTipo); setConcepto(newTipo === 'ingreso' ? 'aporte_capital' : 'pago_nomina'); setError(''); };
 
