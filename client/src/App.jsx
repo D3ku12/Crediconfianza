@@ -257,7 +257,7 @@ export default function App() {
         </header>
 
         {/* Content with padding for fixed header */}
-        <section className="flex-1 p-4 lg:p-6 pt-20 pb-24 md:pt-24 md:pb-6 min-w-0 overflow-x-hidden">
+        <section className="flex-1 px-4 lg:px-6 pt-20 pb-24 md:pt-24 md:pb-6 min-w-0 overflow-x-hidden">
           <Suspense fallback={<Spinner />}>
             {renderTabContent()}
           </Suspense>
