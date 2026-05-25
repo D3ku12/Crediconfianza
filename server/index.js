@@ -1398,8 +1398,9 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       );
     }
     
-    // Si el abono es de intereses, calcular si sobra para capital
-    let exceso = 0;
+    // Si el abono es de intereses, separar exceso que va a capital
+    let montoInteresReal = montoAbono;
+    let montoCapitalExtra = 0;
     if (tipo === 'interes') {
       const abonosPrevios = await client.query(
         'SELECT * FROM abonos WHERE prestamo_id = $1 ORDER BY fecha ASC',
@@ -1408,39 +1409,22 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       const calculo = calcularIntereses(loan, abonosPrevios.rows);
       const interesPendiente = calculo.interes_pendiente;
       if (montoAbono > interesPendiente) {
-        exceso = montoAbono - interesPendiente;
+        montoInteresReal = interesPendiente;
+        montoCapitalExtra = montoAbono - interesPendiente;
       }
     }
 
-    // Insertar el abono
+    // Insertar abono de interés (o capital si no hay exceso)
     const abonoInsert = await client.query(
       `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota) 
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [prestamo_id, montoAbono, tipo, fecha, nota || null]
+      [prestamo_id, tipo === 'interes' ? montoInteresReal : montoAbono, tipo, fecha, nota || null]
     );
     const nuevoAbono = abonoInsert.rows[0];
 
-    // Si hay exceso de intereses, crear abono a capital automático
-    if (exceso > 0) {
-      const excesoNota = nota
-        ? `Exceso de pago intereses: ${nota}`
-        : 'Exceso de pago de intereses';
-      await client.query(
-        `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota)
-         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [prestamo_id, exceso, 'capital', fecha, excesoNota]
-      );
-      const nuevoCapital = Math.max(0, capitalPendienteActual - exceso);
-      const esActivo = nuevoCapital > 0;
-      await client.query(
-        'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
-        [nuevoCapital, esActivo, prestamo_id]
-      );
-    }
-
-    // Registrar el ingreso en caja
-    const tipoCaja = tipo === 'capital' ? 'abono_capital' : 'abono_interes';
-    const conceptoDescr = tipo === 'capital' ? 'Abono a capital' : 'Abono a interés';
+    // Registrar ingreso en caja para el abono principal
+    let tipoCaja = tipo === 'capital' ? 'abono_capital' : 'abono_interes';
+    let conceptoDescr = tipo === 'capital' ? 'Abono a capital' : 'Abono a interés';
     
     await client.query(
       `INSERT INTO transacciones_caja (usuario_id, prestamo_id, abono_id, monto, tipo, descripcion, fecha)
@@ -1449,12 +1433,40 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
         req.user.id, 
         prestamo_id, 
         nuevoAbono.id, 
-        montoAbono, 
+        tipo === 'interes' ? montoInteresReal : montoAbono, 
         tipoCaja, 
         `${conceptoDescr} - Cliente: ${loan.deudor}`, 
         fecha
       ]
     );
+
+    // Si hay exceso de intereses, crear abono a capital + entrada en caja
+    let abonoCapitalExtra = null;
+    if (montoCapitalExtra > 0) {
+      const excesoNota = nota
+        ? `Exceso de pago intereses: ${nota}`
+        : 'Exceso de pago de intereses';
+      const capInsert = await client.query(
+        `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [prestamo_id, montoCapitalExtra, 'capital', fecha, excesoNota]
+      );
+      abonoCapitalExtra = capInsert.rows[0];
+
+      await client.query(
+        `INSERT INTO transacciones_caja (usuario_id, prestamo_id, abono_id, monto, tipo, descripcion, fecha)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [req.user.id, prestamo_id, abonoCapitalExtra.id, montoCapitalExtra, 'abono_capital',
+         `Exceso de pago intereses - Cliente: ${loan.deudor}`, fecha]
+      );
+
+      const nuevoCapital = Math.max(0, capitalPendienteActual - montoCapitalExtra);
+      const esActivo = nuevoCapital > 0;
+      await client.query(
+        'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
+        [nuevoCapital, esActivo, prestamo_id]
+      );
+    }
     
     await client.query('COMMIT');
     res.status(201).json({
