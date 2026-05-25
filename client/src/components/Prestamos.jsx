@@ -224,7 +224,10 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="font-bold text-base" style={{ color: 'var(--color-text)' }}>{loan.deudor}</h3>
-                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Inicio: {formatFecha(loan.fecha_inicio)}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        {loan.cliente_telefono && <span>📱 {loan.cliente_telefono} · </span>}
+                        Inicio: {formatFecha(loan.fecha_inicio)}
+                      </p>
                     </div>
                     <span className="px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
                       style={{
@@ -356,7 +359,10 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                                 {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                               </button>
                             </td>
-                            <td className="px-4 py-3 font-semibold" style={{ color: 'var(--color-text)' }}>{loan.deudor}</td>
+                            <td className="px-4 py-3">
+                              <div className="font-semibold" style={{ color: 'var(--color-text)' }}>{loan.deudor}</div>
+                              {loan.cliente_telefono && <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>📱 {loan.cliente_telefono}</div>}
+                            </td>
                             <td className="px-4 py-3 font-mono font-medium" style={{ color: 'var(--color-text)' }}>{formatCOP(loan.capital_original)}</td>
                             <td className="px-4 py-3 font-mono font-medium" style={{ color: isActivo ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(loan.capital_pendiente)}</td>
                             <td className="px-4 py-3 font-mono font-medium" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.interes_mensual)}</td>

@@ -921,7 +921,11 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
   try {
     const userIds = await getSharedUserIds(req.user.id);
     const prestamosRes = await db.query(
-      'SELECT * FROM prestamos WHERE usuario_id = ANY($1) ORDER BY creado_en DESC',
+      `SELECT p.*, c.telefono as cliente_telefono
+       FROM prestamos p
+       LEFT JOIN clientes c ON p.cliente_id = c.id
+       WHERE p.usuario_id = ANY($1)
+       ORDER BY p.creado_en DESC`,
       [userIds]
     );
     
