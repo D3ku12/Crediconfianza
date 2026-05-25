@@ -584,7 +584,7 @@ app.post('/api/clientes', authenticateToken, async (req, res) => {
   try {
     const result = await db.query(
       `INSERT INTO clientes 
-        (usuario_id, nombre, telefono, descripcion)
+        (usuario_id, nombre, telefono, notas)
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [req.user.id, nombre.trim(), telefono.trim(),
        descripcion?.trim() || null]
@@ -604,7 +604,7 @@ app.put('/api/clientes/:id', authenticateToken, async (req, res) => {
     const userIds = await getSharedUserIds(req.user.id);
     const result = await db.query(
       `UPDATE clientes 
-       SET nombre=$1, telefono=$2, descripcion=$3
+       SET nombre=$1, telefono=$2, notas=$3
        WHERE id=$4 AND usuario_id = ANY($5) RETURNING *`,
       [nombre, telefono||null,
        descripcion||null, id, userIds]
