@@ -38,7 +38,7 @@ const Clientes = memo(function Clientes() {
     try {
       const props = ['name', 'tel']; const opts = { multiple: false };
       const contactos = await navigator.contacts.select(props, opts);
-      if (contactos.length > 0) { const contacto = contactos[0]; setFormData({ nombre: contacto.name?.[0] || '', telefono: contacto.tel?.[0] || '', descripcion: '' }); }
+      if (contactos.length > 0) { const contacto = contactos[0]; setFormData(prev => ({ ...prev, nombre: contacto.name?.[0] || '', telefono: contacto.tel?.[0] || '' })); }
     } catch (error) { console.error('Error al acceder a contactos:', error); }
   };
 
@@ -130,7 +130,7 @@ const Clientes = memo(function Clientes() {
         <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center animate-fade-in" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md p-5 animate-slide-up" style={{ background: 'var(--color-card)' }}>
             <h3 className="text-base font-bold mb-4" style={{ color: 'var(--color-text)' }}>{clienteEditando ? '✏️ Editar cliente' : '👤 Nuevo cliente'}</h3>
-            {soportaContactos && !clienteEditando && (
+            {soportaContactos && (
               <button onClick={agregarDesdeContactos} className="w-full mb-3 flex items-center justify-center gap-2 min-h-[44px] rounded-xl border border-dashed text-sm font-medium transition-all hover:bg-black/5" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
                 📱 Importar desde contactos
               </button>
