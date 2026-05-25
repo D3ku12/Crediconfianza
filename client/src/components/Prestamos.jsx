@@ -57,88 +57,47 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
       try {
         const data = await api.getClientes();
         setClientes(Array.isArray(data) ? data : []);
-      } catch (err) {
-        // handled silently
-      }
+      } catch (err) {}
     };
     cargarClientes();
   }, []);
 
   const handleOpenModal = async () => {
-    setDeudor('');
-    setClienteSeleccionado('');
-    setCapitalDisplay('');
-    setCapitalPendienteDisplay('');
-    setTasaInteres('20');
-    setFechaInicio(new Date().toISOString().split('T')[0]);
-    setConcepto('');
-    setEstadoActivo(true);
-    setModalError('');
-    setIsModalOpen(true);
-    setEditingLoanId(null);
-    try {
-      const caja = await api.getCajaSaldo();
-      setCajaSaldo(caja.saldo);
-    } catch {}
+    setDeudor(''); setClienteSeleccionado(''); setCapitalDisplay(''); setCapitalPendienteDisplay('');
+    setTasaInteres('20'); setFechaInicio(new Date().toISOString().split('T')[0]);
+    setConcepto(''); setEstadoActivo(true); setModalError(''); setIsModalOpen(true); setEditingLoanId(null);
+    try { const caja = await api.getCajaSaldo(); setCajaSaldo(caja.saldo); } catch {}
   };
 
   const handleCreatePrestamo = async (e) => {
     e.preventDefault();
-    if (!deudor || !capitalDisplay || !fechaInicio) {
-      setModalError('Por favor complete todos los campos obligatorios.');
-      return;
-    }
-    setCreating(true);
-    setModalError('');
+    if (!deudor || !capitalDisplay || !fechaInicio) { setModalError('Por favor complete todos los campos obligatorios.'); return; }
+    setCreating(true); setModalError('');
     const capitalNumerico = limpiar(capitalDisplay);
     try {
       let result;
       if (editingLoanId) {
-        const body = {
-          deudor,
-          capital_original: capitalNumerico,
-          tasa_interes: parseFloat(tasaInteres),
-          fecha_inicio: fechaInicio,
-          concepto: concepto || null,
-          cliente_id: clienteSeleccionado ? parseInt(clienteSeleccionado) : null,
-        };
-        if (capitalPendienteDisplay) {
-          body.capital_pendiente = limpiar(capitalPendienteDisplay);
-        }
+        const body = { deudor, capital_original: capitalNumerico, tasa_interes: parseFloat(tasaInteres), fecha_inicio: fechaInicio, concepto: concepto || null, cliente_id: clienteSeleccionado ? parseInt(clienteSeleccionado) : null };
+        if (capitalPendienteDisplay) body.capital_pendiente = limpiar(capitalPendienteDisplay);
         body.activo = estadoActivo;
         result = await api.updatePrestamo(editingLoanId, body);
         toast('Préstamo actualizado con éxito', 'exito');
       } else {
         const clienteSel = clientes.find(c => c.id === parseInt(clienteSeleccionado));
-        result = await api.createPrestamo({
-          deudor: clienteSel?.nombre || deudor,
-          capital_original: capitalNumerico,
-          tasa_interes: parseFloat(tasaInteres),
-          fecha_inicio: fechaInicio,
-          cliente_id: clienteSeleccionado ? parseInt(clienteSeleccionado) : null,
-          concepto: '',
-        });
+        result = await api.createPrestamo({ deudor: clienteSel?.nombre || deudor, capital_original: capitalNumerico, tasa_interes: parseFloat(tasaInteres), fecha_inicio: fechaInicio, cliente_id: clienteSeleccionado ? parseInt(clienteSeleccionado) : null, concepto: '' });
         toast('Préstamo creado con éxito', 'exito');
       }
       setIsModalOpen(false);
       await fetchPrestamos();
       const idResaltar = result?.id || editingLoanId;
-      if (idResaltar) {
-        setHighlightedId(idResaltar);
-        setTimeout(() => setHighlightedId(null), 2500);
-      }
+      if (idResaltar) { setHighlightedId(idResaltar); setTimeout(() => setHighlightedId(null), 2500); }
     } catch (err) {
       setModalError(err.message || 'Error al guardar el préstamo.');
-    } finally {
-      setCreating(false);
-    }
+    } finally { setCreating(false); }
   };
 
   const handleEditClick = async (loan) => {
-    try {
-      const data = await api.getClientes();
-      setClientes(Array.isArray(data) ? data : []);
-    } catch {}
+    try { const data = await api.getClientes(); setClientes(Array.isArray(data) ? data : []); } catch {}
     setDeudor(loan.deudor);
     setClienteSeleccionado(loan.cliente_id ? String(loan.cliente_id) : '');
     setCapitalDisplay(String(loan.capital_original).replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
@@ -147,25 +106,14 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     setFechaInicio(loan.fecha_inicio.split('T')[0]);
     setConcepto(loan.concepto || '');
     setEstadoActivo(parseFloat(loan.capital_pendiente) > 0);
-    setModalError('');
-    setEditingLoanId(loan.id);
-    setIsModalOpen(true);
+    setModalError(''); setEditingLoanId(loan.id); setIsModalOpen(true);
     api.getCajaSaldo().then(r => setCajaSaldo(r.saldo)).catch(() => {});
   };
 
   const handleDeletePrestamo = (id) => {
     setConfirm({
       mensaje: '¿Estás seguro de que deseas eliminar este préstamo? Se borrarán todos sus abonos. Esta acción no se puede deshacer.',
-      onConfirmar: async () => {
-        setConfirm(null);
-        try {
-          await api.deletePrestamo(id);
-          toast('Préstamo eliminado correctamente', 'exito');
-          fetchPrestamos();
-        } catch (err) {
-          toast(err.message || 'Error al eliminar el préstamo', 'error');
-        }
-      },
+      onConfirmar: async () => { setConfirm(null); try { await api.deletePrestamo(id); toast('Préstamo eliminado correctamente', 'exito'); fetchPrestamos(); } catch (err) { toast(err.message || 'Error al eliminar el préstamo', 'error'); } },
       onCancelar: () => setConfirm(null)
     });
   };
@@ -173,18 +121,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const handleDeleteAbono = (abonoId, prestamoId) => {
     setConfirm({
       mensaje: '¿Estás seguro de que deseas eliminar este abono? Si fue a capital, el saldo pendiente aumentará.',
-      onConfirmar: async () => {
-        setConfirm(null);
-        try {
-          await api.deleteAbono(abonoId);
-          const data = await api.getAbonos(prestamoId);
-          setLoanAbonos(prev => ({ ...prev, [prestamoId]: data }));
-          fetchPrestamos();
-          toast('Abono eliminado correctamente', 'exito');
-        } catch (err) {
-          toast(err.message || 'Error al eliminar el abono', 'error');
-        }
-      },
+      onConfirmar: async () => { setConfirm(null); try { await api.deleteAbono(abonoId); const data = await api.getAbonos(prestamoId); setLoanAbonos(prev => ({ ...prev, [prestamoId]: data })); fetchPrestamos(); toast('Abono eliminado correctamente', 'exito'); } catch (err) { toast(err.message || 'Error al eliminar el abono', 'error'); } },
       onCancelar: () => setConfirm(null)
     });
   };
@@ -198,217 +135,191 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     finally { setLoadingAbonos(false); }
   };
 
-  const handleQuickAbonar = (loan) => {
-    setSelectedLoanForAbono(loan);
-    setActiveTab('abonos');
-  };
+  const handleQuickAbonar = (loan) => { setSelectedLoanForAbono(loan); setActiveTab('abonos'); };
 
   const handleGenerarPDF = async (loan) => {
     if (generandoPDF) return;
-    if (!loan) {
-      toast('No hay datos del préstamo para generar el PDF', 'error');
-      return;
-    }
+    if (!loan) { toast('No hay datos del préstamo para generar el PDF', 'error'); return; }
     setGenerandoPDF(loan.id);
     try {
-      const [abonos, todosClientes] = await Promise.all([
-        api.getAbonos(loan.id),
-        api.getClientes()
-      ]);
-      const cliente = Array.isArray(todosClientes)
-        ? todosClientes.find(c => c.id === loan.cliente_id) || {}
-        : {};
+      const [abonos, todosClientes] = await Promise.all([api.getAbonos(loan.id), api.getClientes()]);
+      const cliente = Array.isArray(todosClientes) ? todosClientes.find(c => c.id === loan.cliente_id) || {} : {};
       const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const nombreUsuario = user.nombre_usuario || 'Usuario';
-      setTimeout(() => {
-        generarEstadoCuentaPDF(loan, abonos, cliente, nombreUsuario);
-        setGenerandoPDF(null);
-      }, 100);
-    } catch (err) {
-      toast('Error al cargar datos para generar el PDF', 'error');
-      setGenerandoPDF(null);
-    }
+      setTimeout(() => { generarEstadoCuentaPDF(loan, abonos, cliente, user.nombre_usuario || 'Usuario'); setGenerandoPDF(null); }, 100);
+    } catch (err) { toast('Error al cargar datos para generar el PDF', 'error'); setGenerandoPDF(null); }
   };
 
   const capitalNumerico = limpiar(capitalDisplay);
   const tasaNum = parseFloat(tasaInteres) || 0;
   const interesMensualPreview = capitalNumerico * tasaNum / 100;
 
-  const filteredPrestamos = prestamos.filter(p =>
-    p.deudor.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPrestamos = prestamos.filter(p => p.deudor.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const inputClasses = "w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all";
+  const inputFocusStyle = { borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' };
+
+  const modalFooter = (isEdit) => (
+    <div className="flex gap-3 pt-4 border-t flex-shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+      <button type="button" onClick={() => setIsModalOpen(false)} disabled={creating}
+        className="flex-1 min-h-[44px] rounded-xl border text-sm font-medium transition-all"
+        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>
+        Cancelar
+      </button>
+      <button type="submit" disabled={creating}
+        className="flex-1 min-h-[44px] rounded-xl text-sm font-bold text-white transition-all"
+        style={{ background: 'linear-gradient(135deg, #00C896, #00A87A)' }}>
+        {creating ? 'Guardando...' : (isEdit ? 'Actualizar préstamo' : 'Guardar préstamo')}
+      </button>
+    </div>
   );
 
   return (
     <div>
-      <div className="view-controls">
-        <div className="search-input-wrapper">
-          <Search size={18} className="search-icon" />
-          <input type="text" className="form-control search-input" placeholder="Buscar deudor..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+          <input type="text" placeholder="Buscar deudor..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            className={inputClasses} style={{ paddingLeft: '2.25rem', ...inputFocusStyle }} />
         </div>
-        <button className="btn btn-primary" onClick={handleOpenModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }} title="Nuevo préstamo">
-          <Plus size={18} style={{ flexShrink: 0 }} />
-          <span>Nuevo Préstamo</span>
+        <button onClick={handleOpenModal}
+          className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-sm"
+          style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
+          <Plus size={18} /> <span className="hidden sm:inline">Nuevo Préstamo</span>
         </button>
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '40vh' }}>
-          <p style={{ color: 'var(--text-secondary)' }}>Cargando préstamos...</p>
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border p-4 flex items-center gap-4" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse" />
+                <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : error ? (
-        <div className="login-error">{error}</div>
+        <div className="p-4 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>{error}</div>
       ) : filteredPrestamos.length === 0 && prestamos.length === 0 ? (
-        <EstadoVacio
-          icono="💳"
-          titulo="Aún no tienes préstamos registrados"
-          descripcion="Comienza creando un préstamo para hacer seguimiento de capital, intereses y abonos."
-          accion={handleOpenModal}
-          textoAccion="Crear primer préstamo"
-        />
+        <EstadoVacio icono="💳" titulo="Aún no tienes préstamos registrados" descripcion="Comienza creando un préstamo para hacer seguimiento de capital, intereses y abonos." accion={handleOpenModal} textoAccion="Crear primer préstamo" />
       ) : filteredPrestamos.length === 0 ? (
         <EstadoVacio icono="🔍" titulo="Sin resultados" descripcion={`No se encontraron préstamos para "${searchTerm}".`} accion={() => setSearchTerm('')} textoAccion="Limpiar búsqueda" />
       ) : (
         <>
-          <div className="mobile-cards">
+          {/* MOBILE CARDS */}
+          <div className="lg:hidden space-y-3">
             {filteredPrestamos.map((loan) => {
               const isExpanded = expandedLoanId === loan.id;
               const isActivo = parseFloat(loan.capital_pendiente) > 0;
               const isHighlighted = highlightedId === loan.id;
               return (
-                <div key={loan.id} className="card loan-card" style={isHighlighted ? { borderColor: 'var(--color-success)', boxShadow: '0 0 0 2px color-mix(in srgb, var(--color-success) 30%, transparent)', transition: 'all 0.3s ease' } : {}}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <span style={{ fontWeight: '700', fontSize: '1rem' }}>{loan.deudor}</span>
-                    <span className={`badge ${isActivo ? 'danger' : 'success'}`}>{isActivo ? 'Activo' : 'Pagado'}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
-                    <div style={{ gridColumn: '1 / -1', paddingBottom: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: '0.25rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Fecha de Inicio: </span>
-                      <span style={{ fontWeight: '600' }}>{formatFecha(loan.fecha_inicio)}</span>
-                    </div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Capital</span><span style={{ fontWeight: '600' }}>{formatCOP(loan.capital_original)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Pendiente</span><span className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.capital_pendiente)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Mensual</span><span className={loan.interes_mensual > 0 ? 'text-green' : ''} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_mensual)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Pendiente</span><span className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '600' }}>{formatCOP(loan.interes_pendiente)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Int. Cobrados</span><span className="text-green" style={{ fontWeight: '600' }}>{formatCOP(loan.total_abonado_interes)}</span></div>
-                    <div><span style={{ color: 'var(--text-muted)', display: 'block' }}>Tasa / Tiempo</span><span style={{ fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {parseFloat(loan.tasa_interes) === 0
-                        ? <><span className="badge warning" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>⚠ Sin interés</span></>
-                        : <>{loan.tasa_interes}%</>
-                      }
-                      <span style={{ color: 'var(--text-muted)' }}>·</span>
-                      <span>{loan.tiempo_texto === 'Sin calcular'
-                        ? `${Math.floor((new Date() - new Date(loan.fecha_inicio)) / (1000 * 60 * 60 * 24 * 30)) || 0} mes(es)`
-                        : loan.tiempo_texto
-                      }</span>
-                    </span></div>
-                  </div>
-                  {/* Próximo vencimiento */}
-                  {loan.proximo_vencimiento && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    marginTop: '8px',
-                    padding: '6px 10px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: loan.dias_para_vencer <= 5
-                      ? 'rgba(239,68,68,0.10)'
-                      : loan.dias_para_vencer <= 10
-                      ? 'rgba(251,191,36,0.10)'
-                      : 'var(--color-accent-soft)',
-                  }}>
-                    <span style={{ fontSize: '12px' }}>📅</span>
-                    <span style={{
-                      fontSize: '11px',
-                      color: loan.dias_para_vencer <= 5
-                        ? 'var(--color-danger)'
-                        : loan.dias_para_vencer <= 10
-                        ? 'var(--color-warning)'
-                        : 'var(--color-text-muted)',
-                      fontWeight: loan.dias_para_vencer <= 5 ? '600' : '400',
-                    }}>
-                      {loan.dias_para_vencer === 0
-                        ? '⚠️ Vence hoy'
-                        : loan.dias_para_vencer < 0
-                        ? `Venció hace ${Math.abs(loan.dias_para_vencer)} días`
-                        : `Próximo cobro: ${loan.proximo_vencimiento}`
-                      }
+                <div key={loan.id} className="rounded-2xl border p-4 shadow-sm transition-all" style={{
+                  borderColor: isHighlighted ? 'var(--color-success)' : 'var(--color-border)',
+                  background: 'var(--color-card)',
+                  boxShadow: isHighlighted ? '0 0 0 2px rgba(0,200,150,0.2)' : undefined,
+                }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-bold text-base truncate flex-1" style={{ color: 'var(--color-text)' }}>{loan.deudor}</span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ml-2 flex-shrink-0`}
+                      style={{ background: isActivo ? 'var(--success-bg)' : 'var(--danger-bg)', color: isActivo ? 'var(--success-text)' : 'var(--danger-text)', border: `1px solid ${isActivo ? 'var(--success-border)' : 'var(--danger-border)'}` }}>
+                      {isActivo ? 'Activo' : 'Pagado'}
                     </span>
                   </div>
-                  )}
-                  {/* Grid móvil: Abonar + PDF */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
-                    {isActivo && (
-                      <button onClick={() => handleQuickAbonar(loan)} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        background: 'var(--color-primary)', color: 'var(--color-on-primary)',
-                        border: 'none', borderRadius: 'var(--radius-md)',
-                        padding: '12px', fontSize: '14px', fontWeight: '600',
-                        cursor: 'pointer', minHeight: '44px',
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                    <div className="col-span-2 pb-1.5 mb-1.5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>Inicio: </span>
+                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatFecha(loan.fecha_inicio)}</span>
+                    </div>
+                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Capital</span><span className="font-semibold font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(loan.capital_original)}</span></div>
+                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Pendiente</span><span className="font-semibold font-mono" style={{ color: 'var(--color-danger)' }}>{formatCOP(loan.capital_pendiente)}</span></div>
+                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Int. Mensual</span><span className="font-semibold font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.interes_mensual)}</span></div>
+                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Int. Pendiente</span><span className="font-semibold font-mono" style={{ color: parseFloat(loan.interes_pendiente) > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(loan.interes_pendiente)}</span></div>
+                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Int. Cobrados</span><span className="font-semibold font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.total_abonado_interes)}</span></div>
+                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Tasa</span><span className="font-medium" style={{ color: 'var(--color-text)' }}>{parseFloat(loan.tasa_interes) === 0 ? <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}>Sin interés</span> : `${loan.tasa_interes}%`}</span></div>
+                  </div>
+
+                  {loan.proximo_vencimiento && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs mb-3" style={{
+                      background: loan.dias_para_vencer <= 5 ? 'rgba(255,71,87,0.08)' : loan.dias_para_vencer <= 10 ? 'rgba(255,184,48,0.08)' : 'var(--color-accent-soft)',
+                    }}>
+                      <span>📅</span>
+                      <span style={{
+                        color: loan.dias_para_vencer <= 5 ? 'var(--color-danger)' : loan.dias_para_vencer <= 10 ? 'var(--color-warning)' : 'var(--color-text-muted)',
+                        fontWeight: loan.dias_para_vencer <= 5 ? '600' : '400',
                       }}>
+                        {loan.dias_para_vencer === 0 ? '⚠️ Vence hoy' : loan.dias_para_vencer < 0 ? `Venció hace ${Math.abs(loan.dias_para_vencer)} días` : `Próximo cobro: ${loan.proximo_vencimiento}`}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {isActivo && (
+                      <button onClick={() => handleQuickAbonar(loan)}
+                        className="flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all"
+                        style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
                         💰 Abonar
                       </button>
                     )}
-                    <button onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                      background: 'var(--color-glass)', color: 'var(--color-text)',
-                      border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-                      padding: '12px', fontSize: '14px', fontWeight: '500',
-                      cursor: 'pointer', minHeight: '44px',
-                    }}>
+                    <button onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id}
+                      className="flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl text-sm font-medium transition-all"
+                      style={{ border: '1px solid var(--color-border)', color: 'var(--color-text)', background: 'var(--color-card)' }}>
                       {generandoPDF === loan.id ? 'Generando...' : '📄 PDF'}
                     </button>
                   </div>
-                  {/* Botones secundarios: editar, eliminar, expandir */}
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '8px' }}>
-                    <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} aria-label="Editar préstamo"><Edit size={14} /></button>
-                    <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
-                    <button onClick={() => handleToggleExpand(loan.id)} className="btn btn-secondary btn-small" style={{ minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
-                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <button onClick={() => handleEditClick(loan)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} aria-label="Editar"><Edit size={15} /></button>
+                    <button onClick={() => handleDeletePrestamo(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} aria-label="Eliminar"><Trash2 size={15} /></button>
+                    <button onClick={() => handleToggleExpand(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} aria-label={isExpanded ? 'Colapsar' : 'Expandir'}>
+                      {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                     </button>
                   </div>
+
                   {isExpanded && loanAbonos[loan.id]?.length > 0 && (
-                    <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
-                      <p style={{ fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Historial de Abonos</p>
+                    <div className="mt-3 pt-3 border-t space-y-2" style={{ borderColor: 'var(--color-border)' }}>
+                      <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>Historial de Abonos</p>
                       {loanAbonos[loan.id].map((abono) => (
-                        <div key={abono.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                        <div key={abono.id} className="flex items-center justify-between py-1.5 text-xs border-b last:border-b-0" style={{ borderColor: 'var(--color-border)' }}>
                           <div>
-                            <span className={abono.tipo === 'capital' ? 'text-green' : 'text-yellow'} style={{ fontWeight: '600' }}>{formatCOP(abono.monto)}</span>
-                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.7rem' }}>{abono.tipo === 'capital' ? 'Capital' : 'Interés'}</span>
+                            <span className="font-semibold font-mono" style={{ color: abono.tipo === 'capital' ? 'var(--color-success)' : 'var(--color-warning)' }}>{formatCOP(abono.monto)}</span>
+                            <span className="ml-1.5 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{abono.tipo === 'capital' ? 'Capital' : 'Interés'}</span>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{formatFecha(abono.fecha)}</span>
-                            <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeleteAbono(abono.id, loan.id)} style={{ borderColor: 'transparent', padding: '0.15rem', minHeight: '44px', minWidth: '44px' }} aria-label="Eliminar abono"><Trash2 size={12} /></button>
+                          <div className="flex items-center gap-2">
+                            <span style={{ color: 'var(--color-text-secondary)' }}>{formatFecha(abono.fecha)}</span>
+                            <button onClick={() => handleDeleteAbono(abono.id, loan.id)} className="min-h-[36px] min-w-[36px] flex items-center justify-center" style={{ color: 'var(--color-danger)', background: 'none', border: 'none' }} aria-label="Eliminar abono"><Trash2 size={12} /></button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
                   {isExpanded && (!loanAbonos[loan.id] || loanAbonos[loan.id].length === 0) && (
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>Sin abonos registrados.</p>
+                    <p className="mt-3 text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>Sin abonos registrados.</p>
                   )}
                 </div>
               );
             })}
           </div>
 
-          <div className="desktop-table">
-            <div className="table-container">
-              <div className="table-wrapper">
-                <table>
+          {/* DESKTOP TABLE */}
+          <div className="hidden lg:block">
+            <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
                   <thead>
-                    <tr>
-                      <th style={{ width: '40px' }}></th>
-                      <th>Deudor</th>
-                      <th>Capital Original</th>
-                      <th>Capital Pendiente</th>
-                      <th>Int. Mensual Actual</th>
-                      <th>Int. Pendiente</th>
-                      <th>Int. Cobrados</th>
-                      <th>Tasa</th>
-                      <th>Desde</th>
-                      <th>Estado</th>
-                      <th>Acciones</th>
+                    <tr style={{ background: 'var(--color-accent-soft)' }}>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)', width: '40px' }}></th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Deudor</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Capital Original</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Capital Pendiente</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Int. Mensual</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Int. Pendiente</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Int. Cobrados</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Tasa</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Desde</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Estado</th>
+                      <th className="px-4 py-3 text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -418,56 +329,61 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                       const isHighlighted = highlightedId === loan.id;
                       return (
                         <Fragment key={loan.id}>
-                          <tr style={isHighlighted ? { background: 'rgba(34,197,94,0.06)', transition: 'background 0.3s ease' } : {}}>
-                            <td>
-                              <button onClick={() => handleToggleExpand(loan.id)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '44px', minWidth: '44px' }} aria-label={isExpanded ? 'Colapsar abonos' : 'Expandir abonos'}>
-                                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                          <tr className="transition-colors" style={{ background: isHighlighted ? 'rgba(0,200,150,0.04)' : undefined }} onMouseEnter={(e) => { if (!isHighlighted) e.currentTarget.style.background = 'rgba(108,99,255,0.02)'; }} onMouseLeave={(e) => { if (!isHighlighted) e.currentTarget.style.background = ''; }}>
+                            <td className="px-4 py-3">
+                              <button onClick={() => handleToggleExpand(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center" style={{ color: 'var(--color-text-secondary)', cursor: 'pointer', background: 'none', border: 'none' }} aria-label={isExpanded ? 'Colapsar' : 'Expandir'}>
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                               </button>
                             </td>
-                            <td style={{ fontWeight: '600' }}>{loan.deudor}</td>
-                            <td>{formatCOP(loan.capital_original)}</td>
-                            <td className={isActivo ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.capital_pendiente)}</td>
-                            <td className={loan.interes_mensual > 0 ? 'text-green' : ''} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_mensual)}</td>
-                            <td className={loan.interes_pendiente > 0 ? 'text-red' : 'text-green'} style={{ fontWeight: '500' }}>{formatCOP(loan.interes_pendiente)}</td>
-                            <td className="text-green" style={{ fontWeight: '500' }}>{formatCOP(loan.total_abonado_interes)}</td>
-                            <td>{parseFloat(loan.tasa_interes) === 0
-                              ? <span className="badge warning" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>⚠ Sin interés</span>
-                              : <>{loan.tasa_interes}%</>
+                            <td className="px-4 py-3 font-semibold" style={{ color: 'var(--color-text)' }}>{loan.deudor}</td>
+                            <td className="px-4 py-3 font-mono font-medium" style={{ color: 'var(--color-text)' }}>{formatCOP(loan.capital_original)}</td>
+                            <td className="px-4 py-3 font-mono font-medium" style={{ color: isActivo ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(loan.capital_pendiente)}</td>
+                            <td className="px-4 py-3 font-mono font-medium" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.interes_mensual)}</td>
+                            <td className="px-4 py-3 font-mono font-medium" style={{ color: parseFloat(loan.interes_pendiente) > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(loan.interes_pendiente)}</td>
+                            <td className="px-4 py-3 font-mono font-medium" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.total_abonado_interes)}</td>
+                            <td className="px-4 py-3">{parseFloat(loan.tasa_interes) === 0
+                              ? <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}>Sin interés</span>
+                              : <span style={{ color: 'var(--color-text)' }}>{loan.tasa_interes}%</span>
                             }</td>
-                            <td style={{ fontSize: '12px' }}>{formatFecha(loan.fecha_inicio)}</td>
-                            <td><span className={`badge ${isActivo ? 'danger' : 'success'}`}>{isActivo ? 'Activo' : 'Pagado'}</span></td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {isActivo && <button className="btn btn-secondary btn-small" onClick={() => handleQuickAbonar(loan)} style={{ minHeight: '44px' }} title="Registrar Abono" aria-label="Registrar abono"><Receipt size={14} /></button>}
-                                <button className="btn btn-secondary btn-small" onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} style={{ minHeight: '44px' }} title="Descargar PDF">
-                                  {generandoPDF === loan.id ? 'Generando...' : <><FileDown size={14} /> PDF</>}
+                            <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{formatFecha(loan.fecha_inicio)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold`}
+                                style={{ background: isActivo ? 'var(--success-bg)' : 'var(--danger-bg)', color: isActivo ? 'var(--success-text)' : 'var(--danger-text)', border: `1px solid ${isActivo ? 'var(--success-border)' : 'var(--danger-border)'}` }}>
+                                {isActivo ? 'Activo' : 'Pagado'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5">
+                                {isActivo && <button onClick={() => handleQuickAbonar(loan)} className="min-h-[44px] px-2.5 rounded-xl border text-xs font-medium transition-all hover:bg-gray-50" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} title="Abonar"><Receipt size={15} /></button>}
+                                <button onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id} className="min-h-[44px] px-2.5 rounded-xl border text-xs font-medium transition-all hover:bg-gray-50 inline-flex items-center gap-1" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} title="PDF">
+                                  {generandoPDF === loan.id ? '...' : <><FileDown size={14} /> PDF</>}
                                 </button>
-                                <button className="btn btn-secondary btn-small" onClick={() => handleEditClick(loan)} style={{ minHeight: '44px', minWidth: '44px' }} title="Editar" aria-label="Editar préstamo"><Edit size={14} /></button>
-                                <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeletePrestamo(loan.id)} style={{ borderColor: 'rgba(239, 68, 68, 0.3)', minHeight: '44px', minWidth: '44px' }} title="Eliminar" aria-label="Eliminar préstamo"><Trash2 size={14} /></button>
+                                <button onClick={() => handleEditClick(loan)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition-all hover:bg-gray-50" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} title="Editar"><Edit size={14} /></button>
+                                <button onClick={() => handleDeletePrestamo(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border transition-all hover:bg-red-50" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} title="Eliminar"><Trash2 size={14} /></button>
                               </div>
                             </td>
                           </tr>
                           {isExpanded && (
-                            <tr className="details-row">
-                              <td colSpan={11}>
-                                <div className="details-wrapper">
-                                  <h4 className="subtable-title"><Receipt size={14} />Historial de Abonos</h4>
+                            <tr>
+                              <td colSpan={11} className="px-4 py-3" style={{ background: 'var(--color-accent-soft)' }}>
+                                <div className="pl-4 border-l-[3px]" style={{ borderColor: 'var(--color-primary)' }}>
+                                  <h4 className="text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5" style={{ color: 'var(--color-text-secondary)' }}><Receipt size={13} /> Historial de Abonos</h4>
                                   {loadingAbonos && !loanAbonos[loan.id] ? (
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', padding: '0.5rem 0' }}>Cargando historial...</p>
+                                    <p className="text-xs py-2" style={{ color: 'var(--color-text-secondary)' }}>Cargando historial...</p>
                                   ) : !loanAbonos[loan.id] || loanAbonos[loan.id].length === 0 ? (
-                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>No se han registrado abonos para este préstamo.</p>
+                                    <p className="text-xs py-2" style={{ color: 'var(--color-text-muted)' }}>No se han registrado abonos.</p>
                                   ) : (
-                                    <table style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                                      <thead><tr><th style={{ padding: '0.5rem 1rem' }}>Fecha</th><th style={{ padding: '0.5rem 1rem' }}>Monto</th><th style={{ padding: '0.5rem 1rem' }}>Tipo</th><th style={{ padding: '0.5rem 1rem' }}>Nota</th><th style={{ padding: '0.5rem 1rem' }}>Acciones</th></tr></thead>
+                                    <table className="w-full text-left text-xs mt-2" style={{ fontSize: '0.8rem' }}>
+                                      <thead><tr><th className="px-3 py-2 font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>Fecha</th><th className="px-3 py-2 font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>Monto</th><th className="px-3 py-2 font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>Tipo</th><th className="px-3 py-2 font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>Nota</th><th className="px-3 py-2 font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>Acciones</th></tr></thead>
                                       <tbody>
                                         {loanAbonos[loan.id].map((abono) => (
-                                          <tr key={abono.id}>
-                                            <td style={{ padding: '0.65rem 1rem' }}>{formatFecha(abono.fecha)}</td>
-                                            <td style={{ padding: '0.65rem 1rem', fontWeight: '600' }} className={abono.tipo === 'capital' ? 'text-green' : 'text-yellow'}>{formatCOP(abono.monto)}</td>
-                                            <td style={{ padding: '0.65rem 1rem' }}><span className={`badge ${abono.tipo === 'capital' ? 'success' : 'warning'}`} style={{ padding: '0.1rem 0.5rem', fontSize: '0.7rem' }}>{abono.tipo === 'capital' ? 'A Capital' : 'A Interés'}</span></td>
-                                            <td style={{ padding: '0.65rem 1rem', color: 'var(--text-secondary)' }}>{abono.nota || '—'}</td>
-                                            <td style={{ padding: '0.65rem 1rem' }}>
-                                              <button className="btn btn-secondary btn-small text-red" onClick={() => handleDeleteAbono(abono.id, loan.id)} style={{ borderColor: 'transparent', padding: '0.2rem', minHeight: '44px', minWidth: '44px' }} title="Eliminar Abono" aria-label="Eliminar abono"><Trash2 size={14} /></button>
+                                          <tr key={abono.id} className="border-b last:border-b-0" style={{ borderColor: 'var(--color-border)' }}>
+                                            <td className="px-3 py-2">{formatFecha(abono.fecha)}</td>
+                                            <td className="px-3 py-2 font-semibold font-mono" style={{ color: abono.tipo === 'capital' ? 'var(--color-success)' : 'var(--color-warning)' }}>{formatCOP(abono.monto)}</td>
+                                            <td className="px-3 py-2"><span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: abono.tipo === 'capital' ? 'var(--success-bg)' : 'var(--warning-bg)', color: abono.tipo === 'capital' ? 'var(--success-text)' : 'var(--warning-text)' }}>{abono.tipo === 'capital' ? 'A Capital' : 'A Interés'}</span></td>
+                                            <td className="px-3 py-2" style={{ color: 'var(--color-text-secondary)' }}>{abono.nota || '—'}</td>
+                                            <td className="px-3 py-2">
+                                              <button onClick={() => handleDeleteAbono(abono.id, loan.id)} className="min-h-[36px] min-w-[36px] flex items-center justify-center" style={{ color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }} title="Eliminar"><Trash2 size={12} /></button>
                                             </td>
                                           </tr>
                                         ))}
@@ -490,137 +406,107 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setIsModalOpen(false)} aria-label="Cerrar">×</button>
-            <h3 className="modal-title">{editingLoanId ? 'Editar Préstamo' : 'Nuevo Préstamo'}</h3>
-
-            <form onSubmit={handleCreatePrestamo} id="loan-form" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-              <div className="modal-body">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-6 animate-fade-in" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={() => setIsModalOpen(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] flex flex-col sm:animate-modal-enter" style={{ background: 'var(--color-card)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b flex-shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+              <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>{editingLoanId ? 'Editar Préstamo' : 'Nuevo Préstamo'}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-lg transition-all" style={{ color: 'var(--color-text-secondary)' }} aria-label="Cerrar">×</button>
+            </div>
+            <form onSubmit={handleCreatePrestamo} className="flex flex-col flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                 {cajaSaldo !== null && !editingLoanId && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.65rem 1rem', borderRadius: '0.75rem',
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium" style={{
                     background: cajaSaldo >= capitalNumerico ? 'var(--success-bg)' : 'var(--danger-bg)',
                     border: `1px solid ${cajaSaldo >= capitalNumerico ? 'var(--success-border)' : 'var(--danger-border)'}`,
-                    marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: '500'
+                    color: cajaSaldo >= capitalNumerico ? 'var(--success-text)' : 'var(--danger-text)',
                   }}>
-                    <DollarSign size={16} className={cajaSaldo >= capitalNumerico ? 'text-green' : 'text-red'} />
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      Disponible en caja: <strong className={cajaSaldo >= capitalNumerico ? 'text-green' : 'text-red'}>{formatCOP(cajaSaldo)}</strong>
-                      {capitalNumerico > 0 && (
-                        <> — {cajaSaldo >= capitalNumerico ? 'Fondos suficientes ✅' : '⚠️ Saldo insuficiente'}</>
-                      )}
+                    <DollarSign size={16} />
+                    <span>Disponible en caja: <strong>{formatCOP(cajaSaldo)}</strong>
+                      {capitalNumerico > 0 && <> — {cajaSaldo >= capitalNumerico ? 'Fondos suficientes ✅' : '⚠️ Saldo insuficiente'}</>}
                     </span>
                   </div>
                 )}
+                {modalError && <div className="px-4 py-3 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>{modalError}</div>}
 
-                {modalError && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{modalError}</div>}
-
-                <div className="form-group">
-                  <label style={{ fontSize: '13px', color: 'var(--color-text-soft)', fontWeight: '500', display: 'block', marginBottom: '6px' }}>
-                    Cliente *
-                  </label>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Cliente *</label>
                   {clientes.length === 0 ? (
-                    <div style={{ padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-accent-soft)', fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+                    <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'var(--color-accent-soft)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
                       ⚠️ No hay clientes registrados.{' '}
-                      <span
-                        style={{ color: 'var(--color-accent)', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
-                        onClick={() => setActiveTab('clientes')}
-                      >
-                        Crea un cliente primero
-                      </span>
+                      <span className="font-semibold underline cursor-pointer" style={{ color: 'var(--color-accent)' }} onClick={() => setActiveTab('clientes')}>Crea un cliente primero</span>
                     </div>
                   ) : (
-                    <select
-                      value={clienteSeleccionado}
-                      onChange={e => {
-                        setClienteSeleccionado(e.target.value);
-                        const c = clientes.find(cl => cl.id === parseInt(e.target.value));
-                        if (c) setDeudor(c.nombre);
-                      }}
-                      style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-glass)', color: clienteSeleccionado ? 'var(--color-text)' : 'var(--color-text-muted)', fontSize: '16px', fontFamily: 'inherit', outline: 'none', marginBottom: '12px', cursor: 'pointer' }}
-                    >
+                    <select value={clienteSeleccionado} onChange={e => { setClienteSeleccionado(e.target.value); const c = clientes.find(cl => cl.id === parseInt(e.target.value)); if (c) setDeudor(c.nombre); }}
+                      style={{ ...inputFocusStyle, width: '100%', padding: '12px 14px', borderRadius: '12px', fontSize: '16px', cursor: 'pointer' }}>
                       <option value="" disabled>Selecciona un cliente</option>
-                      {clientes.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre}
-                          {parseFloat(c.deuda_total) > 0
-                            ? ` — Deuda: $${parseFloat(c.deuda_total).toLocaleString('es-CO')}`
-                            : ' — Sin deuda activa'}
-                        </option>
-                      ))}
+                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}{parseFloat(c.deuda_total) > 0 ? ` — Deuda: $${parseFloat(c.deuda_total).toLocaleString('es-CO')}` : ' — Sin deuda activa'}</option>)}
                     </select>
                   )}
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="modal-capital">Capital Original (COP) *</label>
-                  <div style={{ position: 'relative' }}>
-                    <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input id="modal-capital" type="text" inputMode="decimal" className="form-control" placeholder="monto en COP (ej: 1.000.000)" value={capitalDisplay} onChange={(e) => setCapitalDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                <div>
+                  <label htmlFor="modal-capital" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Capital Original (COP) *</label>
+                  <div className="relative">
+                    <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                    <input id="modal-capital" type="text" inputMode="decimal" className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all" placeholder="monto en COP (ej: 1.000.000)" value={capitalDisplay} onChange={(e) => setCapitalDisplay(formatear(e.target.value))} disabled={creating} required style={inputFocusStyle} />
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="modal-tasa">Tasa de Interés (% Mensual)</label>
-                  <div style={{ position: 'relative' }}>
-                    <Percent size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input id="modal-tasa" type="number" min="0" step="0.01" className="form-control" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                <div>
+                  <label htmlFor="modal-tasa" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Tasa de Interés (% Mensual)</label>
+                  <div className="relative">
+                    <Percent size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                    <input id="modal-tasa" type="number" min="0" step="0.01" className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} disabled={creating} required style={inputFocusStyle} />
                   </div>
                 </div>
 
                 {capitalNumerico > 0 && tasaNum > 0 && (
-                  <div style={{
-                    background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
-                    borderRadius: '12px', padding: '16px', marginBottom: '20px'
-                  }}>
-                    <p style={{ fontSize: '13px', color: 'var(--color-primary)', margin: 0 }}>
-                      💡 Interés mensual estimado:{' '}
-                      <strong>
-                        ${interesMensualPreview.toLocaleString('es-CO')}
-                      </strong>
-                    </p>
+                  <div className="px-4 py-3 rounded-xl text-sm" style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
+                    💡 Interés mensual estimado: <strong>${interesMensualPreview.toLocaleString('es-CO')}</strong>
                   </div>
                 )}
 
-                <div className="form-group">
-                  <label htmlFor="modal-fecha">Fecha de Inicio *</label>
-                  <div style={{ position: 'relative' }}>
-                    <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input id="modal-fecha" type="date" className="form-control" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} required />
+                <div>
+                  <label htmlFor="modal-fecha" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Fecha de Inicio *</label>
+                  <div className="relative">
+                    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                    <input id="modal-fecha" type="date" className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} disabled={creating} required style={inputFocusStyle} />
                   </div>
                 </div>
 
                 {editingLoanId && (
                   <>
-                    <div className="form-group">
-                      <label htmlFor="modal-capital-pendiente">Capital Pendiente</label>
-                      <div style={{ position: 'relative' }}>
-                        <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                        <input id="modal-capital-pendiente" type="text" inputMode="decimal" className="form-control" placeholder="monto pendiente" value={capitalPendienteDisplay} onChange={(e) => setCapitalPendienteDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={creating} />
+                    <div>
+                      <label htmlFor="modal-capital-pendiente" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Capital Pendiente</label>
+                      <div className="relative">
+                        <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                        <input id="modal-capital-pendiente" type="text" inputMode="decimal" className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all" placeholder="monto pendiente" value={capitalPendienteDisplay} onChange={(e) => setCapitalPendienteDisplay(formatear(e.target.value))} disabled={creating} style={inputFocusStyle} />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label htmlFor="modal-concepto">Concepto</label>
-                      <input id="modal-concepto" type="text" className="form-control" placeholder="Ej: Préstamo para negocio" value={concepto} onChange={(e) => setConcepto(e.target.value)} style={{ width: '100%' }} disabled={creating} />
+                    <div>
+                      <label htmlFor="modal-concepto" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Concepto</label>
+                      <input id="modal-concepto" type="text" className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all" placeholder="Ej: Préstamo para negocio" value={concepto} onChange={(e) => setConcepto(e.target.value)} disabled={creating} style={inputFocusStyle} />
                     </div>
-                    <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer', fontWeight: '500', minHeight: '44px' }}>
-                        <input type="checkbox" checked={estadoActivo} onChange={(e) => setEstadoActivo(e.target.checked)} style={{ accentColor: 'var(--accent)', width: '18px', height: '18px' }} disabled={creating} />
-                        <span>Préstamo activo</span>
-                      </label>
-                    </div>
+                    <label className="flex items-center gap-2.5 cursor-pointer font-medium min-h-[44px]" style={{ color: 'var(--color-text)' }}>
+                      <input type="checkbox" checked={estadoActivo} onChange={(e) => setEstadoActivo(e.target.checked)} style={{ accentColor: 'var(--color-accent)', width: '18px', height: '18px' }} disabled={creating} />
+                      <span className="text-sm">Préstamo activo</span>
+                    </label>
                   </>
                 )}
               </div>
-
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)} disabled={creating} style={{ flex: 1, minHeight: '44px' }}>Cancelar</button>
-                <button type="submit" className="btn btn-success" disabled={creating} style={{ flex: 1, minHeight: '44px', fontWeight: '700' }}>
-                  {creating ? 'Guardando...' : (editingLoanId ? 'Actualizar préstamo' : 'Guardar préstamo')}
-                </button>
+              <div className="px-5 pb-5 pt-4 border-t flex-shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={creating}
+                    className="flex-1 min-h-[44px] rounded-xl border text-sm font-medium transition-all"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={creating}
+                    className="flex-1 min-h-[44px] rounded-xl text-sm font-bold text-white transition-all shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
+                    {creating ? 'Guardando...' : (editingLoanId ? 'Actualizar' : 'Guardar préstamo')}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

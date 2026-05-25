@@ -4,7 +4,7 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, RefreshCw, Pencil, X, Trash2, DollarSign } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, RefreshCw, Pencil, Trash2, DollarSign } from 'lucide-react';
 
 export default function Caja() {
   const toast = useToast();
@@ -16,7 +16,6 @@ export default function Caja() {
   const [concepto, setConcepto] = useState('aporte_capital');
   const [descripcion, setDescripcion] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -35,69 +34,36 @@ export default function Caja() {
     try {
       setLoading(true);
       const [saldoRes, transRes] = await Promise.all([api.getCajaSaldo(), api.getCajaTransacciones()]);
-      setSaldo(saldoRes.saldo);
-      setTransacciones(transRes);
-    } catch (err) {
-      setError('Error al cargar los datos de caja.');
-    } finally {
-      setLoading(false);
-    }
+      setSaldo(saldoRes.saldo); setTransacciones(transRes);
+    } catch (err) { setError('Error al cargar los datos de caja.'); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchCajaData(); }, []);
 
-  const handleTipoChange = (newTipo) => {
-    setTipo(newTipo);
-    setConcepto(newTipo === 'ingreso' ? 'aporte_capital' : 'pago_nomina');
-    setError('');
-  };
+  const handleTipoChange = (newTipo) => { setTipo(newTipo); setConcepto(newTipo === 'ingreso' ? 'aporte_capital' : 'pago_nomina'); setError(''); };
 
   const handleRegisterTransaccion = async (e) => {
     e.preventDefault();
-    if (!montoDisplay || !descripcion || !fecha) {
-      setError('Por favor completa todos los campos requeridos.');
-      return;
-    }
-    if (montoNumerico <= 0) {
-      setError('El monto debe ser mayor a cero.');
-      return;
-    }
-    if (tipo === 'egreso' && montoNumerico > saldo) {
-      setError(`Saldo insuficiente en caja (disponible: ${formatCOP(saldo)}).`);
-      return;
-    }
-    setSubmitting(true);
-    setError('');
+    if (!montoDisplay || !descripcion || !fecha) { setError('Por favor completa todos los campos requeridos.'); return; }
+    if (montoNumerico <= 0) { setError('El monto debe ser mayor a cero.'); return; }
+    if (tipo === 'egreso' && montoNumerico > saldo) { setError(`Saldo insuficiente en caja (disponible: ${formatCOP(saldo)}).`); return; }
+    setSubmitting(true); setError('');
     try {
       const concDescr = concepto === 'aporte_capital' ? 'Aporte Capital' : (concepto === 'pago_nomina' ? 'Pago Nómina' : 'Otro Pago');
       await api.createCajaTransaccion({ monto: montoNumerico, tipo, descripcion: `[${concDescr}] ${descripcion}`, fecha });
       toast('Transacción registrada con éxito', 'exito');
-      setMontoDisplay('');
-      setDescripcion('');
-      fetchCajaData();
-    } catch (err) {
-      setError(err.message || 'Error al registrar la transacción.');
-    } finally {
-      setSubmitting(false);
-    }
+      setMontoDisplay(''); setDescripcion(''); fetchCajaData();
+    } catch (err) { setError(err.message || 'Error al registrar la transacción.'); }
+    finally { setSubmitting(false); }
   };
 
-  const handleOpenEdit = (t) => {
-    setTransaccionEditando(t);
-    setEditMonto(Math.abs(parseFloat(t.monto)).toString());
-    setEditTipo(t.tipo);
-    setEditDescripcion(t.descripcion);
-    setEditFecha(t.fecha.split('T')[0]);
-    setError('');
-  };
+  const handleOpenEdit = (t) => { setTransaccionEditando(t); setEditMonto(Math.abs(parseFloat(t.monto)).toString()); setEditTipo(t.tipo); setEditDescripcion(t.descripcion); setEditFecha(t.fecha.split('T')[0]); setError(''); };
 
   const handleDeleteTransaccion = (id) => {
     setConfirm({
       mensaje: '¿Estás seguro de eliminar esta transacción? Esta acción no se puede deshacer.',
-      onConfirmar: async () => {
-        setConfirm(null);
-        try { await api.deleteCajaTransaccion(id); toast('Transacción eliminada correctamente', 'exito'); fetchCajaData(); } catch (err) { toast(err.message || 'Error al eliminar la transacción', 'error'); }
-      },
+      onConfirmar: async () => { setConfirm(null); try { await api.deleteCajaTransaccion(id); toast('Transacción eliminada correctamente', 'exito'); fetchCajaData(); } catch (err) { toast(err.message || 'Error al eliminar la transacción', 'error'); } },
       onCancelar: () => setConfirm(null)
     });
   };
@@ -112,19 +78,14 @@ export default function Caja() {
     setEditSubmitting(true); setError('');
     try {
       await api.updateCajaTransaccion(transaccionEditando.id, { monto: valorMonto, tipo: editTipo, descripcion: editDescripcion, fecha: editFecha });
-      handleCloseEdit();
-      toast('Transacción actualizada correctamente', 'exito');
-      fetchCajaData();
+      handleCloseEdit(); toast('Transacción actualizada correctamente', 'exito'); fetchCajaData();
     } catch (err) { setError(err.message || 'Error al editar la transacción.'); }
     finally { setEditSubmitting(false); }
   };
 
   const getTipoLabel = (t) => {
-    if (t === 'abono_interes') return 'Abono Interés';
-    if (t === 'abono_capital') return 'Abono Capital';
-    if (t === 'prestamo') return 'Préstamo';
-    if (t === 'ingreso') return 'Ingreso';
-    if (t === 'egreso') return 'Egreso';
+    if (t === 'abono_interes') return 'Abono Interés'; if (t === 'abono_capital') return 'Abono Capital';
+    if (t === 'prestamo') return 'Préstamo'; if (t === 'ingreso') return 'Ingreso'; if (t === 'egreso') return 'Egreso';
     return t;
   };
 
@@ -136,290 +97,203 @@ export default function Caja() {
   });
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div className="card" style={{
-        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%)',
-        border: '1px solid var(--border-color-glow)', marginBottom: '2rem',
-        padding: '1.5rem 2rem', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem'
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="rounded-2xl border p-5 flex items-center justify-between flex-wrap gap-4" style={{
+        background: 'linear-gradient(135deg, rgba(0,200,150,0.12), rgba(0,200,150,0.04))',
+        borderColor: 'rgba(0,200,150,0.2)',
       }}>
         <div>
-          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dinero Disponible en Caja</span>
-          <h2 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', fontWeight: '800', marginTop: '0.25rem', color: 'var(--color-text)', textShadow: '0 0 20px rgba(16, 185, 129, 0.2)' }}>{formatCOP(saldo)}</h2>
+          <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>Dinero Disponible en Caja</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold mt-1 font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(saldo)}</h2>
         </div>
-        <button className="btn btn-secondary btn-small" onClick={fetchCajaData} disabled={loading} style={{ height: '44px', width: '44px', padding: 0, justifyContent: 'center' }} aria-label="Actualizar datos de caja">
+        <button onClick={fetchCajaData} disabled={loading} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} aria-label="Actualizar">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      <div className="abonos-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1.5fr', gap: '2rem' }}>
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <Wallet size={20} className="text-green" />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Registrar Movimiento</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.5fr] gap-6">
+        <div className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <Wallet size={20} style={{ color: 'var(--color-success)' }} />
+            <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>Registrar Movimiento</h3>
           </div>
-          {error && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
-          <form onSubmit={handleRegisterTransaccion}>
-            <div className="form-group">
-              <label>Tipo de Operación *</label>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button type="button" className={`btn ${tipo === 'ingreso' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => handleTipoChange('ingreso')} style={{ flex: 1, minHeight: '44px' }} disabled={submitting} aria-label="Registrar ingreso">
-                  <PlusCircle size={16} /> Ingreso / Aporte
+          {error && <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>{error}</div>}
+          <form onSubmit={handleRegisterTransaccion} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Tipo de Operación *</label>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => handleTipoChange('ingreso')} disabled={submitting}
+                  className="flex-1 min-h-[44px] rounded-xl text-sm font-medium transition-all border"
+                  style={{ background: tipo === 'ingreso' ? 'linear-gradient(135deg, #6C63FF, #5A52E0)' : 'var(--color-card)', color: tipo === 'ingreso' ? '#fff' : 'var(--color-text)', borderColor: tipo === 'ingreso' ? 'transparent' : 'var(--color-border)' }}>
+                  <PlusCircle size={16} className="inline mr-1" /> Ingreso
                 </button>
-                <button type="button" className={`btn ${tipo === 'egreso' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => handleTipoChange('egreso')} style={{ flex: 1, minHeight: '44px', borderColor: tipo === 'egreso' ? 'var(--danger)' : '' }} disabled={submitting} aria-label="Registrar egreso">
-                  <MinusCircle size={16} /> Egreso / Pago
+                <button type="button" onClick={() => handleTipoChange('egreso')} disabled={submitting}
+                  className="flex-1 min-h-[44px] rounded-xl text-sm font-medium transition-all border"
+                  style={{ background: tipo === 'egreso' ? 'var(--color-danger)' : 'var(--color-card)', color: tipo === 'egreso' ? '#fff' : 'var(--color-text)', borderColor: tipo === 'egreso' ? 'transparent' : 'var(--color-border)' }}>
+                  <MinusCircle size={16} className="inline mr-1" /> Egreso
                 </button>
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="caja-concepto">Concepto *</label>
-              <select id="caja-concepto" className="form-control" value={concepto} onChange={(e) => setConcepto(e.target.value)} disabled={submitting} required>
+            <div>
+              <label htmlFor="caja-concepto" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Concepto *</label>
+              <select id="caja-concepto" value={concepto} onChange={(e) => setConcepto(e.target.value)} disabled={submitting} required
+                className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all"
+                style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }}>
                 {tipo === 'ingreso' ? (
-                  <option value="aporte_capital">Aporte para hacer crecer capital (Inyección)</option>
+                  <option value="aporte_capital">Aporte para hacer crecer capital</option>
                 ) : (
                   <><option value="pago_nomina">Pago Nómina</option><option value="otro_pago">Otro Pago / Gasto Operativo</option></>
                 )}
               </select>
             </div>
-            <div className="form-group">
-              <label htmlFor="caja-monto">Monto *</label>
-              <div style={{ position: 'relative' }}>
-                <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="caja-monto" type="text" inputMode="decimal" className="form-control" placeholder="Monto en COP" value={montoDisplay} onChange={(e) => setMontoDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={submitting} required />
+            <div>
+              <label htmlFor="caja-monto" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Monto *</label>
+              <div className="relative">
+                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                <input id="caja-monto" type="text" inputMode="decimal" placeholder="Monto en COP" value={montoDisplay} onChange={(e) => setMontoDisplay(formatear(e.target.value))} disabled={submitting} required
+                  className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} />
               </div>
               {tipo === 'egreso' && montoNumerico > 0 && (
-                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', padding: '0.35rem 0.65rem', borderRadius: '0.5rem', background: montoNumerico <= saldo ? 'var(--success-bg)' : 'var(--danger-bg)', border: `1px solid ${montoNumerico <= saldo ? 'var(--success-border)' : 'var(--danger-border)'}`, color: montoNumerico <= saldo ? 'var(--success)' : 'var(--danger)' }}>
-                  {montoNumerico <= saldo ? `✅ Saldo después del egreso: ${formatCOP(saldo - montoNumerico)}` : `❌ Saldo insuficiente: necesitas ${formatCOP(montoNumerico - saldo)} más`}
+                <div className="mt-1.5 px-3 py-1.5 rounded-xl text-xs font-medium" style={{
+                  background: montoNumerico <= saldo ? 'var(--success-bg)' : 'var(--danger-bg)',
+                  border: `1px solid ${montoNumerico <= saldo ? 'var(--success-border)' : 'var(--danger-border)'}`,
+                  color: montoNumerico <= saldo ? 'var(--success-text)' : 'var(--danger-text)',
+                }}>
+                  {montoNumerico <= saldo ? `✅ Después: ${formatCOP(saldo - montoNumerico)}` : `❌ Faltan ${formatCOP(montoNumerico - saldo)}`}
                 </div>
               )}
             </div>
-            <div className="form-group">
-              <label htmlFor="caja-fecha">Fecha *</label>
-              <div style={{ position: 'relative' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="caja-fecha" type="date" className="form-control" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={submitting} required />
+            <div>
+              <label htmlFor="caja-fecha" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Fecha *</label>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                <input id="caja-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} disabled={submitting} required
+                  className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} />
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="caja-descr">Detalle o Descripción *</label>
-              <div style={{ position: 'relative' }}>
-                <FileText size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.85rem', color: 'var(--text-muted)' }} />
-                <textarea id="caja-descr" className="form-control" placeholder="ej: Pago de nómina de secretaria quincena mayo" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%', height: '80px', resize: 'none' }} disabled={submitting} required />
+            <div>
+              <label htmlFor="caja-descr" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Detalle *</label>
+              <div className="relative">
+                <FileText size={16} className="absolute left-3 top-3" style={{ color: 'var(--color-text-muted)' }} />
+                <textarea id="caja-descr" placeholder="ej: Pago de nómina de secretaria" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} disabled={submitting} required
+                  className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all resize-none"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)', height: '80px' }} />
               </div>
             </div>
-            <button type="submit" className="btn btn-primary w-full" style={{ marginTop: '0.75rem', background: tipo === 'egreso' ? 'var(--danger)' : '', minHeight: '44px' }} disabled={submitting}>
+            <button type="submit" disabled={submitting}
+              className="w-full min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all shadow-sm"
+              style={{ background: tipo === 'egreso' ? 'var(--color-danger)' : 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
               {submitting ? 'Registrando...' : 'Registrar Movimiento'}
             </button>
           </form>
         </div>
 
-        <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.15rem', fontWeight: '700' }}>Historial de Movimientos</h3>
-            <select className="form-control" style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.8rem', height: '32px' }} value={filtro} onChange={(e) => setFiltro(e.target.value)} aria-label="Filtrar movimientos">
+        <div className="bg-white rounded-2xl border p-5 shadow-sm flex flex-col" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className="text-base font-bold" style={{ color: 'var(--color-text)' }}>Historial</h3>
+            <select value={filtro} onChange={(e) => setFiltro(e.target.value)}
+              className="rounded-xl border px-3 py-1.5 text-xs outline-none"
+              style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} aria-label="Filtrar">
               <option value="todos">Todos</option>
-              <option value="ingreso">Ingresos (Aportes/Abonos)</option>
-              <option value="egreso">Egresos (Nóminas/Préstamos)</option>
-              <option value="prestamo">Sólo Préstamos</option>
-              <option value="abono">Sólo Abonos</option>
+              <option value="ingreso">Ingresos</option>
+              <option value="egreso">Egresos</option>
+              <option value="prestamo">Préstamos</option>
+              <option value="abono">Abonos</option>
             </select>
           </div>
-          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', maxHeight: '420px', paddingRight: '0.25rem' }}>
+          <div className="flex-1 overflow-y-auto space-y-2" style={{ maxHeight: '420px' }}>
             {loading ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem', padding: '2rem' }}>Cargando movimientos...</p>
+              <p className="text-center text-sm py-8" style={{ color: 'var(--color-text-secondary)' }}>Cargando movimientos...</p>
             ) : transacciones.length === 0 ? (
-              <EstadoVacio icono="💰" titulo="No hay movimientos registrados" descripcion="Registra tu primer ingreso o egreso para empezar a controlar tu caja." />
+              <EstadoVacio icono="💰" titulo="Sin movimientos" descripcion="Registra tu primer ingreso o egreso." />
             ) : filteredTransacciones.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', padding: '2rem' }}>Sin movimientos para el filtro seleccionado.</p>
+              <p className="text-center text-sm py-8" style={{ color: 'var(--color-text-muted)' }}>Sin movimientos para este filtro.</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {filteredTransacciones.map((t) => {
-                  return (
-                    <div style={{
-                      background: 'var(--color-card)',
-                      backdropFilter: 'blur(12px)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      padding: '14px 16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      boxShadow: 'var(--color-shadow)',
-                      marginBottom: '10px',
-                      transition: 'box-shadow 0.2s ease',
-                    }}>
-                      <div style={{
-                        width: '40px',
-                        height: '40px',
-                        minWidth: '40px',
-                        borderRadius: '50%',
-                        background: t.tipo === 'ingreso'
-                          ? 'rgba(34,197,94,0.15)'
-                          : t.tipo === 'egreso'
-                          ? 'rgba(239,68,68,0.15)'
-                          : 'var(--color-accent-soft)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
+              filteredTransacciones.map((t) => (
+                <div key={t.id} className="flex items-center gap-3 p-3.5 rounded-xl border transition-all hover:shadow-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+                  <div className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center text-base" style={{
+                    background: t.tipo === 'ingreso' ? 'rgba(0,200,150,0.12)' : t.tipo === 'egreso' ? 'rgba(255,71,87,0.12)' : 'var(--color-accent-soft)',
+                  }}>
+                    {t.tipo === 'ingreso' ? '↑' : t.tipo === 'egreso' ? '↓' : '⇄'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{t.descripcion}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{formatFecha(t.fecha)}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full" style={{
+                        background: t.tipo === 'ingreso' ? 'rgba(0,200,150,0.12)' : t.tipo === 'egreso' ? 'rgba(255,71,87,0.12)' : 'var(--color-accent-soft)',
+                        color: t.tipo === 'ingreso' ? 'var(--color-success)' : t.tipo === 'egreso' ? 'var(--color-danger)' : 'var(--color-accent)',
                       }}>
-                        {t.tipo === 'ingreso' ? '↑'
-                         : t.tipo === 'egreso' ? '↓'
-                         : '⇄'}
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: 'var(--color-text)',
-                          margin: 0,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}>
-                          {t.descripcion}
-                        </p>
-
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          marginTop: '3px',
-                          flexWrap: 'wrap',
-                        }}>
-                          <span style={{
-                            fontSize: '12px',
-                            color: 'var(--color-text-muted)',
-                          }}>
-                            {formatFecha(t.fecha)}
-                          </span>
-
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: '600',
-                            padding: '2px 8px',
-                            borderRadius: '99px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
-                            background: t.tipo === 'ingreso'
-                              ? 'rgba(34,197,94,0.15)'
-                              : t.tipo === 'egreso'
-                              ? 'rgba(239,68,68,0.15)'
-                              : 'var(--color-accent-soft)',
-                            color: t.tipo === 'ingreso'
-                              ? 'var(--color-success)'
-                              : t.tipo === 'egreso'
-                              ? 'var(--color-danger)'
-                              : 'var(--color-accent)',
-                          }}>
-                            {getTipoLabel(t.tipo)}
-                          </span>
-                        </div>
-
-                        <p style={{
-                          fontSize: '15px',
-                          fontWeight: '700',
-                          margin: '4px 0 0',
-                          color: t.monto >= 0
-                            ? 'var(--color-success)'
-                            : 'var(--color-danger)',
-                        }}>
-                          {t.monto >= 0 ? '+' : ''}
-                          {formatCOP(Math.abs(t.monto))}
-                        </p>
-                      </div>
-
-                      {(t.tipo === 'ingreso' || t.tipo === 'egreso') && (
-                        <div style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '6px',
-                          flexShrink: 0,
-                        }}>
-                          <button
-                            onClick={() => handleOpenEdit(t)}
-                            style={{
-                              width: '34px',
-                              height: '34px',
-                              borderRadius: '8px',
-                              border: '1px solid var(--color-border)',
-                              background: 'var(--color-glass)',
-                              color: 'var(--color-text-soft)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '14px',
-                              transition: 'all 0.15s ease',
-                            }}
-                            title="Editar"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTransaccion(t.id)}
-                            style={{
-                              width: '34px',
-                              height: '34px',
-                              borderRadius: '8px',
-                              border: '1px solid rgba(239,68,68,0.3)',
-                              background: 'rgba(239,68,68,0.08)',
-                              color: 'var(--color-danger)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '14px',
-                              transition: 'all 0.15s ease',
-                            }}
-                            title="Eliminar"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
+                        {getTipoLabel(t.tipo)}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
+                    <p className="text-base font-bold mt-1 font-mono" style={{ color: t.monto >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      {t.monto >= 0 ? '+' : ''}{formatCOP(Math.abs(t.monto))}
+                    </p>
+                  </div>
+                  {(t.tipo === 'ingreso' || t.tipo === 'egreso') && (
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <button onClick={() => handleOpenEdit(t)} className="w-9 h-9 flex items-center justify-center rounded-lg border transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} title="Editar"><Pencil size={13} /></button>
+                      <button onClick={() => handleDeleteTransaccion(t.id)} className="w-9 h-9 flex items-center justify-center rounded-lg border transition-all" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} title="Eliminar"><Trash2 size={13} /></button>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
           </div>
         </div>
       </div>
 
       {transaccionEditando && (
-        <div className="modal-overlay" onClick={handleCloseEdit}>
-          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={handleCloseEdit} aria-label="Cerrar">×</button>
-            <h3 className="modal-title">Editar Transacción</h3>
-            <form onSubmit={handleSaveEdit}>
-              <div className="form-group">
-                <label>Tipo de Operación *</label>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <button type="button" className={`btn ${editTipo === 'ingreso' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setEditTipo('ingreso')} style={{ flex: 1, minHeight: '44px' }} disabled={editSubmitting}><PlusCircle size={16} /> Ingreso</button>
-                  <button type="button" className={`btn ${editTipo === 'egreso' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setEditTipo('egreso')} style={{ flex: 1, minHeight: '44px', borderColor: editTipo === 'egreso' ? 'var(--danger)' : '' }} disabled={editSubmitting}><MinusCircle size={16} /> Egreso</button>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 animate-fade-in" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} onClick={handleCloseEdit}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 animate-modal-enter" style={{ background: 'var(--color-card)' }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-4" style={{ color: 'var(--color-text)' }}>Editar Transacción</h3>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Tipo *</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setEditTipo('ingreso')} disabled={editSubmitting}
+                    className="flex-1 min-h-[44px] rounded-xl text-sm font-medium transition-all border"
+                    style={{ background: editTipo === 'ingreso' ? 'linear-gradient(135deg, #6C63FF, #5A52E0)' : 'var(--color-card)', color: editTipo === 'ingreso' ? '#fff' : 'var(--color-text)', borderColor: editTipo === 'ingreso' ? 'transparent' : 'var(--color-border)' }}>
+                    Ingreso
+                  </button>
+                  <button type="button" onClick={() => setEditTipo('egreso')} disabled={editSubmitting}
+                    className="flex-1 min-h-[44px] rounded-xl text-sm font-medium transition-all border"
+                    style={{ background: editTipo === 'egreso' ? 'var(--color-danger)' : 'var(--color-card)', color: editTipo === 'egreso' ? '#fff' : 'var(--color-text)', borderColor: editTipo === 'egreso' ? 'transparent' : 'var(--color-border)' }}>
+                    Egreso
+                  </button>
                 </div>
               </div>
-              <div className="form-group"><label htmlFor="edit-monto">Monto *</label><input id="edit-monto" type="number" min="1" step="any" className="form-control" placeholder="Monto en COP" value={editMonto} onChange={(e) => setEditMonto(e.target.value)} disabled={editSubmitting} required /></div>
-              <div className="form-group">
-                <label htmlFor="edit-fecha">Fecha *</label>
-                <div style={{ position: 'relative' }}>
-                  <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input id="edit-fecha" type="date" className="form-control" value={editFecha} onChange={(e) => setEditFecha(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={editSubmitting} required />
+              <div>
+                <label htmlFor="edit-monto" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Monto *</label>
+                <input id="edit-monto" type="number" min="1" step="any" placeholder="Monto en COP" value={editMonto} onChange={(e) => setEditMonto(e.target.value)} disabled={editSubmitting} required
+                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} />
+              </div>
+              <div>
+                <label htmlFor="edit-fecha" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Fecha *</label>
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                  <input id="edit-fecha" type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)} disabled={editSubmitting} required
+                    className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all"
+                    style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} />
                 </div>
               </div>
-              <div className="form-group">
-                <label htmlFor="edit-descr">Detalle o Descripción *</label>
-                <div style={{ position: 'relative' }}>
-                  <FileText size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.85rem', color: 'var(--text-muted)' }} />
-                  <textarea id="edit-descr" className="form-control" placeholder="Descripción de la transacción" value={editDescripcion} onChange={(e) => setEditDescripcion(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%', height: '80px', resize: 'none' }} disabled={editSubmitting} required />
+              <div>
+                <label htmlFor="edit-descr" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Detalle *</label>
+                <div className="relative">
+                  <FileText size={16} className="absolute left-3 top-3" style={{ color: 'var(--color-text-muted)' }} />
+                  <textarea id="edit-descr" placeholder="Descripción" value={editDescripcion} onChange={(e) => setEditDescripcion(e.target.value)} disabled={editSubmitting} required
+                    className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all resize-none"
+                    style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)', height: '80px' }} />
                 </div>
               </div>
-              {error && <div className="login-error" style={{ marginBottom: '1rem' }}>{error}</div>}
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1, minHeight: '44px' }} onClick={handleCloseEdit} disabled={editSubmitting}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1, minHeight: '44px', background: editTipo === 'egreso' ? 'var(--danger)' : '' }} disabled={editSubmitting}>{editSubmitting ? 'Guardando...' : 'Guardar Cambios'}</button>
+              {error && <div className="px-4 py-3 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>{error}</div>}
+              <div className="flex gap-3">
+                <button type="button" onClick={handleCloseEdit} disabled={editSubmitting} className="flex-1 min-h-[44px] rounded-xl border text-sm font-medium transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>Cancelar</button>
+                <button type="submit" disabled={editSubmitting} className="flex-1 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all shadow-sm" style={{ background: editTipo === 'egreso' ? 'var(--color-danger)' : 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>{editSubmitting ? 'Guardando...' : 'Guardar'}</button>
               </div>
             </form>
           </div>

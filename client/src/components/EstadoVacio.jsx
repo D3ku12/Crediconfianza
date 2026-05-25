@@ -2,25 +2,16 @@ import { memo } from 'react';
 
 export const EstadoVacio = memo(function EstadoVacio({ icono, titulo, descripcion, accion, textoAccion }) {
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', padding: '48px 24px', textAlign: 'center'
-    }}>
-      <div style={{ fontSize: '48px', marginBottom: '16px' }}>{icono}</div>
-      <h3 style={{ fontSize: '18px', fontWeight: '600',
-                   color: 'var(--color-text)', marginBottom: '8px' }}>
-        {titulo}
-      </h3>
-      <p style={{ fontSize: '14px', color: 'var(--color-text-soft)',
-                  marginBottom: '24px', maxWidth: '260px' }}>
-        {descripcion}
-      </p>
+    <div className="flex flex-col items-center justify-center text-center px-6 py-12">
+      <div className="text-5xl mb-4">{icono}</div>
+      <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text)' }}>{titulo}</h3>
+      <p className="text-sm mb-6 max-w-xs" style={{ color: 'var(--color-text-secondary)' }}>{descripcion}</p>
       {accion && (
-        <button onClick={accion} style={{
-          background: 'var(--color-primary)', color: 'var(--color-on-primary)', border: 'none',
-          padding: '12px 24px', borderRadius: '10px',
-          fontSize: '14px', fontWeight: '600', cursor: 'pointer'
-        }}>
+        <button
+          onClick={accion}
+          className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all min-h-[44px]"
+          style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}
+        >
           {textoAccion}
         </button>
       )}

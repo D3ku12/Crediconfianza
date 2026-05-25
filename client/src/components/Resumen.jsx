@@ -3,15 +3,29 @@ import { api, formatCOP } from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock, Ban } from 'lucide-react';
 
-const MetricCard = memo(function MetricCard({ title, value, icon: Icon, className }) {
+const MetricCard = memo(function MetricCard({ title, value, icon: Icon, delay = 0 }) {
   return (
-    <div className="card">
-      <div className="card-metric">
-        <div className="metric-header">
-          <span>{title}</span>
-          <div className="metric-icon"><Icon size={18} /></div>
+    <div
+      className="bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all duration-300 animate-fade-slide-up"
+      style={{
+        borderColor: 'var(--color-border)',
+        background: 'var(--color-card)',
+        animationDelay: `${delay}s`,
+        opacity: 0,
+      }}
+    >
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+            {title}
+          </span>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent)', opacity: 0.5 }}>
+            <Icon size={20} />
+          </div>
         </div>
-        <span className={`metric-value ${className}`} style={{ wordBreak: 'break-all' }}>{value}</span>
+        <span className="text-2xl font-bold font-mono break-all" style={{ color: 'var(--color-text)' }}>
+          {value}
+        </span>
       </div>
     </div>
   );
@@ -20,9 +34,13 @@ const MetricCard = memo(function MetricCard({ title, value, icon: Icon, classNam
 const CustomTooltip = memo(function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div style={{ background: 'rgba(15, 21, 36, 0.95)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '0.75rem', boxShadow: 'var(--shadow-lg)', backdropFilter: 'blur(10px)' }}>
-        <p style={{ fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '0.95rem' }}>{label}</p>
-        {payload.map((item, idx) => <p key={idx} style={{ color: item.color, fontSize: '0.85rem', margin: '0.2rem 0' }}>{item.name}: <strong>{formatCOP(item.value)}</strong></p>)}
+      <div className="rounded-xl p-4 shadow-lg border" style={{ background: 'rgba(15,21,36,0.95)', borderColor: 'var(--color-border)', backdropFilter: 'blur(10px)' }}>
+        <p className="font-bold text-sm mb-2" style={{ color: '#fff' }}>{label}</p>
+        {payload.map((item, idx) => (
+          <p key={idx} style={{ color: item.color, fontSize: '0.85rem', margin: '0.2rem 0' }}>
+            {item.name}: <strong>{formatCOP(item.value)}</strong>
+          </p>
+        ))}
       </div>
     );
   }
@@ -87,87 +105,88 @@ export default function Resumen() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Cargando datos del resumen...</p>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="w-10 h-10 rounded-xl bg-gray-200 animate-pulse" />
+            </div>
+            <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}><div className="login-error" style={{ display: 'inline-block' }}>{error}</div></div>;
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center p-6 rounded-xl" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
+          <p style={{ color: 'var(--danger)' }}>{error}</p>
+          <button onClick={fetchData} className="mt-3 px-4 py-2 text-sm font-medium rounded-xl border" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>Reintentar</button>
+        </div>
+      </div>
+    );
   }
 
   const { resumen, grafica } = data || { resumen: {}, grafica: [] };
 
   const cards = [
-    { title: 'Disponible en Caja', value: formatCOP(resumen.saldoCaja || 0), icon: Wallet, className: 'positive' },
-    { title: 'Total Prestado', value: formatCOP(resumen.totalPrestado || 0), icon: TrendingUp, className: 'positive' },
-    { title: 'Capital Pendiente Total', value: formatCOP(resumen.capitalPendienteTotal || 0), icon: Ban, className: 'positive' },
-    { title: 'Intereses Pendientes', value: formatCOP(resumen.interesesPendientes || 0), icon: ShieldAlert, className: 'negative' },
-    { title: 'Capital Recuperado', value: formatCOP(resumen.capitalRecuperado || 0), icon: ArrowDownLeft, className: 'positive' },
-    { title: 'Intereses Cobrados', value: formatCOP(resumen.interesesCobrados || 0), icon: Percent, className: 'positive' },
+    { title: 'Disponible en Caja', value: formatCOP(resumen.saldoCaja || 0), icon: Wallet },
+    { title: 'Total Prestado', value: formatCOP(resumen.totalPrestado || 0), icon: TrendingUp },
+    { title: 'Capital Pendiente Total', value: formatCOP(resumen.capitalPendienteTotal || 0), icon: Ban },
+    { title: 'Intereses Pendientes', value: formatCOP(resumen.interesesPendientes || 0), icon: ShieldAlert },
+    { title: 'Capital Recuperado', value: formatCOP(resumen.capitalRecuperado || 0), icon: ArrowDownLeft },
+    { title: 'Intereses Cobrados', value: formatCOP(resumen.interesesCobrados || 0), icon: Percent },
   ];
 
   return (
-    <div>
-      {/* Alert: Loans with >3 months without payment */}
+    <div className="space-y-4">
       {prestamosEnRiesgo.length > 0 && (
-        <div style={{
-          background: 'color-mix(in srgb, var(--color-warning) 20%, transparent)',
-          border: '1px solid var(--color-warning)',
-          borderRadius: '12px', padding: '16px', marginBottom: '16px',
-          display: 'flex', alignItems: 'center', gap: '12px'
-        }}>
-          <AlertTriangle size={20} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-warning)', fontWeight: '500' }}>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{ background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)', borderColor: 'var(--color-warning)' }}>
+          <AlertTriangle size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
+          <p className="text-sm font-medium" style={{ color: 'var(--color-warning)' }}>
             ⚠️ {prestamosEnRiesgo.length} préstamo(s) llevan más de 3 meses sin registrar abonos
           </p>
         </div>
       )}
 
-      {/* Indicator: Highest pending interest */}
       {prestamoMayorInteres && mayorInteresPendiente > 0 && (
-        <div style={{
-          background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--color-primary) 40%, transparent)',
-          borderRadius: '12px', padding: '16px', marginBottom: '16px',
-          display: 'flex', alignItems: 'center', gap: '12px'
-        }}>
-          <Clock size={20} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-primary)', fontWeight: '500' }}>
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
+          <Clock size={18} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+          <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
             Mayor riesgo: <strong>{prestamoMayorInteres.deudor}</strong> — {formatCOP(mayorInteresPendiente)} de intereses pendientes
           </p>
         </div>
       )}
 
-      {/* Metric cards */}
-      <div className="cards-grid">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((card, idx) => (
-          <MetricCard key={idx} title={card.title} value={card.value} icon={card.icon} className={card.className} />
+          <MetricCard key={idx} title={card.title} value={card.value} icon={card.icon} delay={0.03 * idx} />
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="chart-section">
-        <div className="chart-header">
-          <h3 className="chart-title">Análisis de Cartera por Deudor</h3>
-          <p className="chart-subtitle">Capital pendiente e intereses pendientes acumulados por cada cliente</p>
+      <div className="bg-white rounded-2xl border p-5 lg:p-6 shadow-sm animate-fade-slide-up" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', animationDelay: '0.18s', opacity: 0 }}>
+        <div className="mb-4">
+          <h3 className="text-base font-bold" style={{ color: 'var(--color-text)' }}>Análisis de Cartera por Deudor</h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>Capital pendiente e intereses pendientes acumulados por cada cliente</p>
         </div>
         {grafica.length === 0 ? (
-          <div style={{ height: `${chartHeight}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: '0.75rem', border: '1px dashed var(--border-color)' }}>
-            <p style={{ color: 'var(--text-muted)' }}>No hay préstamos registrados para mostrar la gráfica.</p>
+          <div className="flex items-center justify-center rounded-xl border-2 border-dashed" style={{ height: `${chartHeight}px`, borderColor: 'var(--color-border)' }}>
+            <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>No hay préstamos registrados para mostrar la gráfica.</p>
           </div>
         ) : (
-          <div className="chart-wrapper" style={{ height: `${chartHeight}px`, width: '100%' }}>
+          <div style={{ height: `${chartHeight}px`, width: '100%' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={grafica} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
-                <XAxis dataKey="deudor" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={{ stroke: 'var(--border-color)' }} />
-                <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={{ stroke: 'var(--border-color)' }} tickFormatter={(val) => `$${val / 1000}k`} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)' }} />
-                <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.85rem', color: 'var(--text-primary)' }} />
-                <Bar dataKey="capitalPendiente" name="Capital Pendiente" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="interesesPendientes" name="Intereses Pendientes" fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <BarChart data={grafica} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.04)" vertical={false} />
+                <XAxis dataKey="deudor" tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} tickFormatter={(val) => `$${val / 1000}k`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.85rem' }} />
+                <Bar dataKey="capitalPendiente" name="Capital Pendiente" fill="#6C63FF" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="interesesPendientes" name="Intereses Pendientes" fill="#FF4757" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

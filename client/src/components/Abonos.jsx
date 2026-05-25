@@ -13,7 +13,6 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
   const [tipo, setTipo] = useState('interes');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [nota, setNota] = useState('');
-
   const [loadingLoans, setLoadingLoans] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -26,56 +25,32 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
       const activos = data.filter(p => parseFloat(p.capital_pendiente) > 0);
       setPrestamos(activos);
       if (selectedLoan) setSelectedLoanId(selectedLoan.id.toString());
-    } catch (err) {
-      setError('Error al cargar la lista de préstamos activos.');
-    } finally {
-      setLoadingLoans(false);
-    }
+    } catch (err) { setError('Error al cargar la lista de préstamos activos.'); }
+    finally { setLoadingLoans(false); }
   };
 
   useEffect(() => { fetchLoans(); }, [selectedLoan]);
 
   const handleLoanChange = (e) => {
-    const id = e.target.value;
-    setSelectedLoanId(id);
-    setError('');
-    if (id) {
-      const loan = prestamos.find(p => p.id.toString() === id);
-      setSelectedLoan(loan || null);
-    } else {
-      setSelectedLoan(null);
-    }
+    const id = e.target.value; setSelectedLoanId(id); setError('');
+    if (id) { const loan = prestamos.find(p => p.id.toString() === id); setSelectedLoan(loan || null); }
+    else { setSelectedLoan(null); }
   };
 
   const handleRegisterAbono = async (e) => {
     e.preventDefault();
-    if (!selectedLoanId || !montoDisplay || !tipo || !fecha) {
-      setError('Por favor completa todos los campos requeridos.');
-      return;
-    }
+    if (!selectedLoanId || !montoDisplay || !tipo || !fecha) { setError('Por favor completa todos los campos requeridos.'); return; }
     const valorMonto = limpiar(montoDisplay);
-    if (valorMonto <= 0) {
-      setError('El monto del abono debe ser mayor a cero.');
-      return;
-    }
+    if (valorMonto <= 0) { setError('El monto del abono debe ser mayor a cero.'); return; }
     const activeLoan = prestamos.find(p => p.id.toString() === selectedLoanId);
-    if (tipo === 'capital' && activeLoan && valorMonto > parseFloat(activeLoan.capital_pendiente)) {
-      setError(`El abono a capital no puede superar el capital pendiente de ${formatCOP(activeLoan.capital_pendiente)}.`);
-      return;
-    }
-    setSubmitting(true);
-    setError('');
+    if (tipo === 'capital' && activeLoan && valorMonto > parseFloat(activeLoan.capital_pendiente)) { setError(`El abono a capital no puede superar el capital pendiente de ${formatCOP(activeLoan.capital_pendiente)}.`); return; }
+    setSubmitting(true); setError('');
     try {
       await api.createAbono({ prestamo_id: parseInt(selectedLoanId), monto: valorMonto, tipo, fecha, nota });
       toast('Abono registrado con éxito', 'exito');
-      setMontoDisplay('');
-      setNota('');
-      fetchLoans();
-    } catch (err) {
-      setError(err.message || 'Error al registrar el abono.');
-    } finally {
-      setSubmitting(false);
-    }
+      setMontoDisplay(''); setNota(''); fetchLoans();
+    } catch (err) { setError(err.message || 'Error al registrar el abono.'); }
+    finally { setSubmitting(false); }
   };
 
   const selectedLoanData = prestamos.find(p => p.id.toString() === selectedLoanId);
@@ -88,9 +63,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
   };
 
   const confirmPagoTotal = async () => {
-    setShowConfirmModal(false);
-    setSubmitting(true);
-    setError('');
+    setShowConfirmModal(false); setSubmitting(true); setError('');
     try {
       if (selectedLoanData.interes_pendiente > 0) {
         await api.createAbono({ prestamo_id: parseInt(selectedLoanId), monto: selectedLoanData.interes_pendiente, tipo: 'interes', fecha, nota: nota || 'Pago total - Liquidación de intereses' });
@@ -99,85 +72,88 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
         await api.createAbono({ prestamo_id: parseInt(selectedLoanId), monto: selectedLoanData.capital_pendiente, tipo: 'capital', fecha, nota: nota || 'Pago total - Liquidación de capital' });
       }
       toast(`Pago total de ${formatCOP(selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente)} registrado. Crédito liquidado.`, 'exito');
-      setMontoDisplay('');
-      setNota('');
-      fetchLoans();
-    } catch (err) {
-      setError(err.message || 'Error al procesar el pago total.');
-    } finally {
-      setSubmitting(false);
-    }
+      setMontoDisplay(''); setNota(''); fetchLoans();
+    } catch (err) { setError(err.message || 'Error al procesar el pago total.'); }
+    finally { setSubmitting(false); }
   };
 
   const montoNumerico = limpiar(montoDisplay);
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <div className="abonos-grid" style={{ display: 'grid', gridTemplateColumns: selectedLoanData ? '1.2fr 1fr' : '1fr', gap: '2rem' }}>
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <CircleDollarSign size={20} className="text-green" />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Registrar Abono</h3>
+    <div className="max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+        <div className="bg-white rounded-2xl border p-5 shadow-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <CircleDollarSign size={20} style={{ color: 'var(--color-success)' }} />
+            <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>Registrar Abono</h3>
           </div>
-          {error && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
-          <form onSubmit={handleRegisterAbono}>
-            <div className="form-group">
-              <label htmlFor="abono-loan">Seleccionar Préstamo *</label>
+          {error && <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>{error}</div>}
+          <form onSubmit={handleRegisterAbono} className="space-y-4">
+            <div>
+              <label htmlFor="abono-loan" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Seleccionar Préstamo *</label>
               {loadingLoans ? (
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Cargando préstamos activos...</p>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Cargando préstamos activos...</p>
               ) : (
-                <select id="abono-loan" className="form-control" value={selectedLoanId} onChange={handleLoanChange} disabled={submitting} required>
+                <select id="abono-loan" value={selectedLoanId} onChange={handleLoanChange} disabled={submitting} required
+                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }}>
                   <option value="">-- Seleccionar Deudor --</option>
                   {prestamos.map(p => <option key={p.id} value={p.id}>{p.deudor} (Pendiente: {formatCOP(p.capital_pendiente)})</option>)}
                 </select>
               )}
             </div>
-            <div className="form-group">
-              <label htmlFor="abono-monto">Monto del Abono *</label>
-              <div style={{ position: 'relative' }}>
-                <DollarSign size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="abono-monto" type="text" inputMode="decimal" className="form-control" placeholder="Monto en COP" value={montoDisplay} onChange={(e) => setMontoDisplay(formatear(e.target.value))} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={submitting || !selectedLoanId} required />
+            <div>
+              <label htmlFor="abono-monto" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Monto del Abono *</label>
+              <div className="relative">
+                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                <input id="abono-monto" type="text" inputMode="decimal" placeholder="Monto en COP" value={montoDisplay} onChange={(e) => setMontoDisplay(formatear(e.target.value))} disabled={submitting || !selectedLoanId} required
+                  className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} />
               </div>
             </div>
-            <div className="form-group">
-              <label>Tipo de Abono *</label>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'var(--color-text)', minHeight: '44px' }}>
-                  <input type="radio" name="tipo-abono" value="interes" checked={tipo === 'interes'} onChange={() => setTipo('interes')} disabled={submitting || !selectedLoanId} />
+            <div>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Tipo de Abono *</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer font-medium min-h-[44px]" style={{ color: 'var(--color-text)' }}>
+                  <input type="radio" name="tipo-abono" value="interes" checked={tipo === 'interes'} onChange={() => setTipo('interes')} disabled={submitting || !selectedLoanId} style={{ accentColor: 'var(--color-accent)' }} />
                   Abono a Interés
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500', color: 'var(--color-text)', minHeight: '44px' }}>
-                  <input type="radio" name="tipo-abono" value="capital" checked={tipo === 'capital'} onChange={() => setTipo('capital')} disabled={submitting || !selectedLoanId} />
+                <label className="flex items-center gap-2 cursor-pointer font-medium min-h-[44px]" style={{ color: 'var(--color-text)' }}>
+                  <input type="radio" name="tipo-abono" value="capital" checked={tipo === 'capital'} onChange={() => setTipo('capital')} disabled={submitting || !selectedLoanId} style={{ accentColor: 'var(--color-accent)' }} />
                   Abono a Capital
                 </label>
               </div>
             </div>
             {selectedLoanData && montoNumerico > 0 && tipo === 'capital' && montoNumerico > parseFloat(selectedLoanData.capital_pendiente) && (
-              <div style={{ padding: '0.5rem 0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', fontSize: '0.8rem', color: 'var(--danger)' }}>
+              <div className="px-3 py-2 rounded-xl text-xs font-medium" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger-text)' }}>
                 ⚠️ El abono a capital no puede exceder {formatCOP(selectedLoanData.capital_pendiente)}
               </div>
             )}
-            <div className="form-group">
-              <label htmlFor="abono-fecha">Fecha de Pago *</label>
-              <div style={{ position: 'relative' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input id="abono-fecha" type="date" className="form-control" value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%' }} disabled={submitting || !selectedLoanId} required />
+            <div>
+              <label htmlFor="abono-fecha" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Fecha de Pago *</label>
+              <div className="relative">
+                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
+                <input id="abono-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} disabled={submitting || !selectedLoanId} required
+                  className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} />
               </div>
             </div>
-            <div className="form-group">
-              <label htmlFor="abono-nota">Nota u Observación (Opcional)</label>
-              <div style={{ position: 'relative' }}>
-                <FileText size={16} style={{ position: 'absolute', left: '0.75rem', top: '0.85rem', color: 'var(--text-muted)' }} />
-                <textarea id="abono-nota" className="form-control" placeholder="ej: Recibo de pago de interés del primer mes" value={nota} onChange={(e) => setNota(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%', height: '80px', resize: 'vertical' }} disabled={submitting || !selectedLoanId} />
+            <div>
+              <label htmlFor="abono-nota" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Nota (Opcional)</label>
+              <div className="relative">
+                <FileText size={16} className="absolute left-3 top-3" style={{ color: 'var(--color-text-muted)' }} />
+                <textarea id="abono-nota" placeholder="ej: Recibo de pago de interés del primer mes" value={nota} onChange={(e) => setNota(e.target.value)} disabled={submitting || !selectedLoanId}
+                  className="w-full rounded-xl border px-4 py-2.5 pl-9 text-sm outline-none transition-all resize-none"
+                  style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)', height: '80px' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1, minWidth: 0, minHeight: '44px' }} disabled={submitting || !selectedLoanId}>
+            <div className="flex gap-3 pt-1">
+              <button type="submit" className="flex-1 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all shadow-sm" style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }} disabled={submitting || !selectedLoanId}>
                 {submitting ? 'Registrando...' : 'Registrar Abono'}
               </button>
               {selectedLoanData && (
-                <button type="button" className="btn btn-secondary" style={{ flex: 1, minWidth: 0, borderColor: 'var(--accent)', color: 'var(--accent)', minHeight: '44px' }} disabled={submitting || !selectedLoanId} onClick={handlePagoTotalClick}>
-                  Pago Total (Liquidar)
+                <button type="button" onClick={handlePagoTotalClick} className="flex-1 min-h-[44px] rounded-xl text-sm font-medium transition-all border" style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }} disabled={submitting || !selectedLoanId}>
+                  Liquidar Crédito
                 </button>
               )}
             </div>
@@ -185,42 +161,39 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
         </div>
 
         {selectedLoanData && (
-          <div className="card" style={{ height: 'fit-content' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-              <ShieldCheck size={20} className="text-green" />
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '700' }}>Estado del Crédito</h3>
+          <div className="bg-white rounded-2xl border p-5 shadow-sm h-fit" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck size={20} style={{ color: 'var(--color-success)' }} />
+              <h3 className="text-base font-bold" style={{ color: 'var(--color-text)' }}>Estado del Crédito</h3>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.925rem' }}>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Deudor:</span><span style={{ fontWeight: '600' }}>{selectedLoanData.deudor}</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Capital Original:</span><span style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.capital_original)}</span></div>
-              <div className="flex-row-between" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}><span style={{ color: 'var(--text-secondary)' }}>Capital Pendiente:</span><span className="text-red" style={{ fontWeight: '600' }}>{formatCOP(selectedLoanData.capital_pendiente)}</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Tasa mensual:</span><span style={{ fontWeight: '500' }}>{selectedLoanData.tasa_interes}% mensual</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Interés mensual:</span><span style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.interes_mensual)}</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Fecha de Inicio:</span><span>{formatFecha(selectedLoanData.fecha_inicio)}</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Tiempo transcurrido:</span><span style={{ fontWeight: '500', fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{selectedLoanData.tiempo_label}</span></div>
-              <div className="flex-row-between" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}><span style={{ color: 'var(--text-secondary)' }}>Interés Acumulado:</span><span style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.interes_acumulado)}</span></div>
-              <div className="flex-row-between"><span style={{ color: 'var(--text-secondary)' }}>Abonado a Intereses:</span><span className="text-green" style={{ fontWeight: '500' }}>{formatCOP(selectedLoanData.total_abonado_interes)}</span></div>
-              <div style={{ fontSize: '1.05rem', fontWeight: '700', padding: '0.5rem', background: 'rgba(255,255,255,0.02)', borderRadius: '0.5rem' }}>
-                <div className="flex-row-between">
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Deudor:</span><span className="font-semibold" style={{ color: 'var(--color-text)' }}>{selectedLoanData.deudor}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Capital Original:</span><span className="font-medium font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(selectedLoanData.capital_original)}</span></div>
+              <div className="flex justify-between pb-3 border-b" style={{ borderColor: 'var(--color-border)' }}><span style={{ color: 'var(--color-text-secondary)' }}>Capital Pendiente:</span><span className="font-semibold font-mono" style={{ color: 'var(--color-danger)' }}>{formatCOP(selectedLoanData.capital_pendiente)}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Tasa mensual:</span><span className="font-medium" style={{ color: 'var(--color-text)' }}>{selectedLoanData.tasa_interes}% mensual</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Interés mensual:</span><span className="font-medium font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(selectedLoanData.interes_mensual)}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Fecha de Inicio:</span><span style={{ color: 'var(--color-text)' }}>{formatFecha(selectedLoanData.fecha_inicio)}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Tiempo:</span><span className="text-xs italic" style={{ color: 'var(--color-text-muted)' }}>{selectedLoanData.tiempo_label}</span></div>
+              <div className="flex justify-between pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}><span style={{ color: 'var(--color-text-secondary)' }}>Interés Acumulado:</span><span className="font-medium font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(selectedLoanData.interes_acumulado)}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--color-text-secondary)' }}>Abonado a Intereses:</span><span className="font-medium font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(selectedLoanData.total_abonado_interes)}</span></div>
+              <div className="p-3 rounded-xl text-sm font-bold" style={{ background: 'var(--color-accent-soft)' }}>
+                <div className="flex justify-between">
                   <span style={{ color: 'var(--color-text)' }}>Interés Pendiente:</span>
-                  <span className={selectedLoanData.interes_pendiente > 0 ? 'text-red' : 'text-green'}>{formatCOP(selectedLoanData.interes_pendiente)}</span>
+                  <span className="font-mono" style={{ color: selectedLoanData.interes_pendiente > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(selectedLoanData.interes_pendiente)}</span>
                 </div>
-                {selectedLoanData.tiempo_label && (
-                  <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: '2px 0 0', fontStyle: 'italic' }}>
-                    {selectedLoanData.tiempo_label}
-                  </p>
-                )}
               </div>
             </div>
-            <div style={{ marginTop: '1.25rem', padding: '0.75rem', background: 'var(--danger-bg)', borderRadius: '0.5rem', border: '1px solid var(--danger-border)', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-              <HelpCircle size={16} className="text-red" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.3' }}>* Un abono a <strong>interés</strong> reduce el saldo pendiente de intereses acumulados, mientras que un abono a <strong>capital</strong> disminuye la deuda base y, en consecuencia, reduce los intereses devengados de los siguientes meses.</p>
+            <div className="mt-4 p-3 rounded-xl text-xs flex gap-2" style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
+              <HelpCircle size={14} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: '1px' }} />
+              <p style={{ color: 'var(--color-text-secondary)', lineHeight: '1.4' }}>* Un abono a <strong>interés</strong> reduce el saldo pendiente, mientras que un abono a <strong>capital</strong> disminuye la deuda base y reduce intereses futuros.</p>
             </div>
             {selectedLoanData.interes_pendiente > 0 && selectedLoanData.interes_mensual > 0 && (
-              <div style={{ marginTop: '1rem', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.8rem', background: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-bg)' : 'rgba(245,158,11,0.1)', border: `1px solid ${selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-border)' : 'rgba(245,158,11,0.2)'}`, color: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger)' : 'var(--warning)' }}>
-                {selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3
-                  ? '⚠️ Este préstamo tiene más de 3 meses de intereses sin pagar'
-                  : `🕐 ${selectedLoanData.tiempo_label} — sin abonar`}
+              <div className="mt-3 px-3 py-2 rounded-xl text-xs font-medium" style={{
+                background: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-bg)' : 'rgba(245,158,11,0.1)',
+                border: `1px solid ${selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-border)' : 'rgba(245,158,11,0.2)'}`,
+                color: selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? 'var(--danger-text)' : 'var(--warning-text)',
+              }}>
+                {selectedLoanData.interes_pendiente >= selectedLoanData.interes_mensual * 3 ? '⚠️ Más de 3 meses de intereses sin pagar' : `🕐 ${selectedLoanData.tiempo_label} — sin abonar`}
               </div>
             )}
           </div>
@@ -228,24 +201,26 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
       </div>
 
       {showConfirmModal && selectedLoanData && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <button className="modal-close" onClick={() => setShowConfirmModal(false)}>×</button>
-            <h2 className="modal-title">Confirmar Liquidación</h2>
-            <div style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
-              <p>¿Estás seguro de liquidar este crédito? Se registrarán automáticamente los siguientes pagos con fecha <strong>{formatFecha(fecha)}</strong>:</p>
-              <ul style={{ margin: '1rem 0 1rem 1.5rem', color: 'var(--text-primary)' }}>
-                <li>Interés pendiente: <strong className={selectedLoanData.interes_pendiente > 0 ? "text-red" : "text-green"}>{formatCOP(selectedLoanData.interes_pendiente)}</strong></li>
-                <li>Capital pendiente: <strong className={selectedLoanData.capital_pendiente > 0 ? "text-red" : "text-green"}>{formatCOP(selectedLoanData.capital_pendiente)}</strong></li>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 animate-fade-in" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-modal-enter" style={{ background: 'var(--color-card)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>Confirmar Liquidación</h2>
+              <button onClick={() => setShowConfirmModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-lg" style={{ color: 'var(--color-text-secondary)' }}>×</button>
+            </div>
+            <div className="text-sm space-y-3" style={{ color: 'var(--color-text-secondary)' }}>
+              <p>Se registrarán los siguientes pagos con fecha <strong>{formatFecha(fecha)}</strong>:</p>
+              <ul className="ml-5 space-y-1" style={{ listStyle: 'disc' }}>
+                <li>Interés pendiente: <strong style={{ color: selectedLoanData.interes_pendiente > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(selectedLoanData.interes_pendiente)}</strong></li>
+                <li>Capital pendiente: <strong style={{ color: selectedLoanData.capital_pendiente > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(selectedLoanData.capital_pendiente)}</strong></li>
               </ul>
-              <div style={{ padding: '1rem', background: 'var(--bg-main)', borderRadius: '0.5rem', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Total a pagar:</span>
-                <span className="text-green" style={{ fontSize: '1.25rem', fontWeight: '800' }}>{formatCOP(selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente)}</span>
+              <div className="flex justify-between items-center p-4 rounded-xl" style={{ background: 'color-mix(in srgb, var(--color-bg) 50%, transparent)', border: '1px solid var(--color-border)' }}>
+                <span className="font-medium" style={{ color: 'var(--color-text)' }}>Total a pagar:</span>
+                <span className="text-xl font-extrabold font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(selectedLoanData.interes_pendiente + selectedLoanData.capital_pendiente)}</span>
               </div>
             </div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowConfirmModal(false)} style={{ minHeight: '44px' }}>Cancelar</button>
-              <button className="btn btn-primary" onClick={confirmPagoTotal} style={{ minHeight: '44px' }}>Confirmar Pago</button>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowConfirmModal(false)} className="flex-1 min-h-[44px] rounded-xl border text-sm font-medium transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-card)' }}>Cancelar</button>
+              <button onClick={confirmPagoTotal} className="flex-1 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all shadow-sm" style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>Confirmar Pago</button>
             </div>
           </div>
         </div>

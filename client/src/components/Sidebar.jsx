@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, X } from 'lucide-react';
+import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, X, Shield } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMobileOpen, closeMobileMenu }) {
   const menuItems = [
@@ -11,7 +11,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMob
   ];
 
   if (user && user.es_admin) {
-    menuItems.push({ id: 'usuarios', label: 'Usuarios', icon: Users });
+    menuItems.push({ id: 'usuarios', label: 'Usuarios', icon: Shield });
   }
 
   const handleNavClick = (id) => {
@@ -21,60 +21,63 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMob
 
   const navContent = (
     <>
-      <div className="logo-container">
-        <span className="logo-icon">🤝</span>
-        <span className="logo-text">CREDIALIADO</span>
+      <div className="flex items-center gap-3 px-3 py-4 mb-6">
+        <span className="text-2xl">🤝</span>
+        <span className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--color-primary)' }}>
+          CREDIALIADO
+        </span>
       </div>
 
-      <ul className="nav-menu">
+      <nav className="flex-1 space-y-0.5">
         {menuItems.map((item) => {
           const Icon = item.icon;
+          const isActive = activeTab === item.id;
           return (
-            <li key={item.id}>
-              <div
-                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-                onClick={() => handleNavClick(item.id)}
-              >
-                <Icon className="nav-icon" size={20} />
-                <span>{item.label}</span>
-              </div>
-            </li>
-          );
-        })}
-        
-        <li>
-          <div className="nav-item logout-btn" onClick={onLogout} style={{ marginTop: '2rem' }}>
-            <LogOut size={20} />
-            <span>Cerrar Sesión</span>
-          </div>
-        </li>
-      </ul>
-
-      {user && (
-        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem' }}>
-            <div 
-              style={{ 
-                width: '32px', 
-                height: '32px', 
-                borderRadius: '50%', 
-                background: 'linear-gradient(135deg, var(--accent) 0%, #6ee7b7 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '0.85rem'
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.id)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all relative"
+              style={{
+                color: isActive ? '#4F46E5' : 'var(--color-text-secondary)',
+                background: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
               }}
             >
+              {isActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#6C63FF' }} />
+              )}
+              <Icon size={20} className="flex-shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </button>
+          );
+        })}
+
+        <div className="pt-4 mt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all"
+            style={{ color: '#EF4444' }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.06)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <LogOut size={20} className="flex-shrink-0" />
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </nav>
+
+      {user && (
+        <div className="mt-auto pt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-primary)' }}>
               {user.nombre_usuario ? user.nombre_usuario.charAt(0).toUpperCase() : 'U'}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: '600', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>
                 {user.nombre_usuario}
-              </span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+              </p>
+              <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
                 {user.es_admin ? 'Administrador' : 'Gestor'}
-              </span>
+              </p>
             </div>
           </div>
         </div>
@@ -84,15 +87,18 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout, isMob
 
   return (
     <>
-      <aside className="sidebar">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 z-[100] flex-col w-[260px] bg-white border-r border-gray-100 px-4 py-3" style={{ background: 'var(--color-card-solid, #ffffff)' }}>
         {navContent}
       </aside>
 
+      {/* Mobile drawer */}
       {isMobileOpen && (
-        <div className="sidebar-overlay" onClick={closeMobileMenu}>
-          <aside className="sidebar-drawer" onClick={(e) => e.stopPropagation()}>
-            <button className="drawer-close" onClick={closeMobileMenu} aria-label="Cerrar menú">
-              <X size={24} />
+        <div className="lg:hidden fixed inset-0 z-[1000]" onClick={closeMobileMenu}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" />
+          <aside className="absolute top-0 left-0 bottom-0 w-[280px] bg-white border-r shadow-2xl animate-slide-in-left overflow-y-auto" style={{ background: 'var(--color-card-solid, #ffffff)' }} onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-lg border" style={{ borderColor: 'var(--color-border)' }} onClick={closeMobileMenu} aria-label="Cerrar menú">
+              <X size={20} />
             </button>
             {navContent}
           </aside>

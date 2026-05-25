@@ -8,154 +8,64 @@ export function SelectorTema() {
 
   useEffect(() => {
     if (!abierto) return;
-    const cerrar = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setAbierto(false);
-      }
-    };
+    const cerrar = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
     document.addEventListener('mousedown', cerrar);
     document.addEventListener('touchstart', cerrar);
-    return () => {
-      document.removeEventListener('mousedown', cerrar);
-      document.removeEventListener('touchstart', cerrar);
-    };
+    return () => { document.removeEventListener('mousedown', cerrar); document.removeEventListener('touchstart', cerrar); };
   }, [abierto]);
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-
+    <div ref={ref} className="relative">
       <button
         onClick={() => setAbierto(!abierto)}
         title="Personalizar tema"
-        className="theme-selector-btn"
+        className="min-h-[44px] px-3 rounded-xl border transition-all flex items-center gap-1 text-sm font-medium flex-shrink-0"
         style={{
-          background: abierto ? 'var(--color-accent-soft)' : 'transparent',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-md)',
-          padding: '8px 10px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
+          borderColor: 'var(--color-border)',
           color: 'var(--color-text)',
-          fontSize: '13px',
-          fontWeight: '500',
-          minHeight: '44px',
-          transition: 'all 0.2s ease',
-          flexShrink: 0,
+          background: abierto ? 'var(--color-accent-soft)' : 'transparent',
         }}
       >
         🎨
-        <span className="theme-label">Tema</span>
+        <span className="hidden sm:inline">Tema</span>
       </button>
 
-      {abierto && (
-        <div
-          onClick={() => setAbierto(false)}
-          style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 9998,
-            animation: 'fadeIn 0.2s ease',
-          }}
-        />
-      )}
+      {abierto && <div onClick={() => setAbierto(false)} className="fixed inset-0 z-[9998] animate-fade-in" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }} />}
 
       {abierto && (
         <div
-          className="theme-dropdown"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            width: '220px',
-            background: 'var(--color-card-solid)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid var(--color-glass-border)',
-            borderRadius: 'var(--radius-xl)',
-            boxShadow: 'var(--color-shadow-hover)',
-            overflow: 'hidden',
-            zIndex: 9999,
-            animation: 'slideUp 0.25s ease',
-          }}
+          className="absolute top-full right-0 mt-2 w-56 rounded-2xl border shadow-xl z-[9999] overflow-hidden animate-slide-up"
+          style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}
         >
-          <div style={{
-            padding: '14px 16px 10px',
-            borderBottom: '1px solid var(--color-border)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
-            <span style={{ fontSize: '16px' }}>🎨</span>
-            <span style={{
-              fontSize: '13px',
-              fontWeight: '700',
-              color: 'var(--color-text)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-            }}>
-              Elige tu tema
-            </span>
+          <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+            <span>🎨</span>
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--color-text)' }}>Elige tu tema</span>
           </div>
-
-          <div style={{ padding: '8px' }}>
+          <div className="p-2">
             {Object.entries(TEMAS).map(([key, val]) => {
               const activo = temaActual === key;
               return (
                 <button
                   key={key}
                   onClick={() => { setTemaActual(key); setAbierto(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all min-h-[44px]"
                   style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    border: activo
-                      ? '1.5px solid var(--color-primary-solid)'
-                      : '1.5px solid transparent',
+                    border: activo ? '1.5px solid var(--color-primary)' : '1.5px solid transparent',
                     background: activo ? 'var(--color-accent-soft)' : 'transparent',
-                    cursor: 'pointer',
-                    minHeight: '44px',
-                    transition: 'all 0.15s ease',
                   }}
                 >
-                  <div style={{
-                    display: 'flex',
-                    gap: '3px',
-                    flexShrink: 0,
-                  }}>
+                  <div className="flex gap-0.5 flex-shrink-0">
                     {[val.primarySolid, val.bgSolid, val.cardSolid].map((c, i) => (
-                      <div key={i} style={{
-                        width: '12px',
-                        height: '24px',
-                        borderRadius: '4px',
-                        background: c,
-                        border: '1px solid rgba(0,0,0,0.1)',
-                      }} />
+                      <div key={i} className="w-[10px] h-5 rounded-sm" style={{ background: c, border: '1px solid rgba(0,0,0,0.08)' }} />
                     ))}
                   </div>
-
-                  <span style={{
-                    fontSize: '14px',
+                  <span className="text-sm flex-1 text-left" style={{
                     fontWeight: activo ? '600' : '400',
-                    color: activo ? 'var(--color-primary-solid)' : 'var(--color-text)',
-                    flex: 1,
-                    textAlign: 'left',
+                    color: activo ? 'var(--color-primary)' : 'var(--color-text)',
                   }}>
                     {val.nombre}
                   </span>
-
-                  {activo && (
-                    <span style={{
-                      fontSize: '16px',
-                      color: 'var(--color-primary-solid)',
-                    }}>
-                      ✓
-                    </span>
-                  )}
+                  {activo && <span style={{ color: 'var(--color-primary)' }}>✓</span>}
                 </button>
               );
             })}
