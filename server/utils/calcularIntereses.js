@@ -37,7 +37,7 @@ function calcularIntereses(prestamo, abonos) {
     (ahora.getFullYear() - fechaInicio.getFullYear()) * 12 +
     (ahora.getMonth() - fechaInicio.getMonth())
 
-  const mesesACobrar = Math.max(mesesTranscurridos, 1)
+  const mesesACobrar = Math.max(mesesTranscurridos + 1, 1)
 
   let capitalVigente = capitalOriginal
   let totalInteresesGenerados = 0
@@ -73,7 +73,7 @@ function calcularIntereses(prestamo, abonos) {
     .filter(a => a.tipo === 'capital')
     .reduce((sum, a) => sum + parseFloat(a.monto), 0)
 
-  const capitalPendiente = Math.max(0, capitalVigente)
+  const capitalPendiente = Math.max(0, capitalOriginal - totalAbonoCapital)
   const interesMensualActual = capitalPendiente > 0 ? capitalPendiente * (tasa / 100) : 0
   const interesPendiente = Math.max(totalInteresesGenerados - totalInteresesPagados, 0)
 
