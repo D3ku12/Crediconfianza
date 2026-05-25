@@ -38,7 +38,7 @@ const Clientes = memo(function Clientes() {
     try {
       const props = ['name', 'tel']; const opts = { multiple: false };
       const contactos = await navigator.contacts.select(props, opts);
-      if (contactos.length > 0) { const contacto = contactos[0]; setFormData({ nombre: contacto.name?.[0] || '', telefono: contacto.tel?.[0] || '', descripcion: '' }); setClienteEditando(null); setMostrarFormulario(true); }
+      if (contactos.length > 0) { const contacto = contactos[0]; setFormData({ nombre: contacto.name?.[0] || '', telefono: contacto.tel?.[0] || '', descripcion: '' }); }
     } catch (error) { console.error('Error al acceder a contactos:', error); }
   };
 
@@ -70,11 +70,6 @@ const Clientes = memo(function Clientes() {
           <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} registrado{clientes.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {soportaContactos && (
-            <button onClick={agregarDesdeContactos} className="min-h-[44px] px-4 py-2.5 rounded-xl border border-dashed text-sm font-medium transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-              📱 Contactos
-            </button>
-          )}
           <button onClick={abrirNuevo} className="min-h-[44px] px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-sm" style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
             + Nuevo cliente
           </button>
@@ -135,6 +130,11 @@ const Clientes = memo(function Clientes() {
         <div className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center animate-fade-in" style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md p-5 animate-slide-up" style={{ background: 'var(--color-card)' }}>
             <h3 className="text-base font-bold mb-4" style={{ color: 'var(--color-text)' }}>{clienteEditando ? '✏️ Editar cliente' : '👤 Nuevo cliente'}</h3>
+            {soportaContactos && !clienteEditando && (
+              <button onClick={agregarDesdeContactos} className="w-full mb-3 flex items-center justify-center gap-2 min-h-[44px] rounded-xl border border-dashed text-sm font-medium transition-all hover:bg-black/5" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                📱 Importar desde contactos
+              </button>
+            )}
             <div className="space-y-3">
               <input className={inputBase} style={inputStyle} placeholder="Nombre completo *" value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} autoFocus />
               <input className={inputBase} style={inputStyle} placeholder="Número de teléfono *" value={formData.telefono} onChange={e => setFormData({ ...formData, telefono: e.target.value })} inputMode="tel" type="tel" />
