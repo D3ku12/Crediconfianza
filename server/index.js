@@ -1380,24 +1380,49 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       return res.status(400).json({ mensaje: 'El monto del abono debe ser mayor a cero.' });
     }
 
-    // Si el abono es a capital, actualizar el capital pendiente
+    // Si el abono es a capital, validar y dividir exceso a intereses si aplica
+    let montoCapitalReal = montoAbono;
+    let montoInteresExtra = 0;
     if (tipo === 'capital') {
       if (montoAbono > capitalPendienteActual) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ 
-          mensaje: `El abono a capital ($${montoAbono}) no puede ser mayor al capital pendiente ($${capitalPendienteActual}).` 
-        });
+        // Calcular intereses pendientes para ver si el exceso puede ir a intereses
+        const abonosPrevios = await client.query(
+          'SELECT * FROM abonos WHERE prestamo_id = $1 ORDER BY fecha ASC',
+          [prestamo_id]
+        );
+        const calculo = calcularIntereses(loan, abonosPrevios.rows);
+        const interesPendiente = calculo.interes_pendiente;
+        const deudaTotal = capitalPendienteActual + interesPendiente;
+
+        if (montoAbono > deudaTotal) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            mensaje: `El monto total ($${montoAbono}) supera la deuda total de $${deudaTotal.toLocaleString('es-CO')} (capital $${capitalPendienteActual.toLocaleString('es-CO')} + intereses $${interesPendiente.toLocaleString('es-CO')}).`
+          });
+        }
+
+        if (interesPendiente === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            mensaje: `El abono a capital ($${montoAbono}) no puede ser mayor al capital pendiente ($${capitalPendienteActual}) porque no hay intereses pendientes.`
+          });
+        }
+
+        // Dividir: el exceso va a intereses
+        montoCapitalReal = capitalPendienteActual;
+        montoInteresExtra = montoAbono - capitalPendienteActual;
       }
-      
-      const nuevoCapitalPendiente = capitalPendienteActual - montoAbono;
+
+      // Actualizar capital pendiente (solo la parte que va a capital)
+      const nuevoCapitalPendiente = capitalPendienteActual - montoCapitalReal;
       const esActivo = nuevoCapitalPendiente > 0;
-      
+
       await client.query(
         'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
         [nuevoCapitalPendiente, esActivo, prestamo_id]
       );
     }
-    
+
     // Si el abono es de intereses, separar exceso que va a capital
     let montoInteresReal = montoAbono;
     let montoCapitalExtra = 0;
@@ -1408,39 +1433,58 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       );
       const calculo = calcularIntereses(loan, abonosPrevios.rows);
       const interesPendiente = calculo.interes_pendiente;
+      const deudaTotal = capitalPendienteActual + interesPendiente;
+
+      if (montoAbono > deudaTotal) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          mensaje: `El monto total ($${montoAbono}) supera la deuda total de $${deudaTotal.toLocaleString('es-CO')} (capital $${capitalPendienteActual.toLocaleString('es-CO')} + intereses $${interesPendiente.toLocaleString('es-CO')}).`
+        });
+      }
+
       if (montoAbono > interesPendiente) {
         montoInteresReal = interesPendiente;
         montoCapitalExtra = montoAbono - interesPendiente;
+
+        if (montoCapitalExtra > capitalPendienteActual) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            mensaje: `El exceso de intereses ($${montoCapitalExtra}) supera el capital pendiente ($${capitalPendienteActual}).`
+          });
+        }
       }
     }
 
-    // Insertar abono de interés (o capital si no hay exceso)
+    // Insertar abono principal
+    const montoInsertar = tipo === 'capital' ? montoCapitalReal
+                        : tipo === 'interes' ? montoInteresReal
+                        : montoAbono;
     const abonoInsert = await client.query(
       `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota) 
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [prestamo_id, tipo === 'interes' ? montoInteresReal : montoAbono, tipo, fecha, nota || null]
+      [prestamo_id, montoInsertar, tipo, fecha, nota || null]
     );
     const nuevoAbono = abonoInsert.rows[0];
 
     // Registrar ingreso en caja para el abono principal
     let tipoCaja = tipo === 'capital' ? 'abono_capital' : 'abono_interes';
     let conceptoDescr = tipo === 'capital' ? 'Abono a capital' : 'Abono a interés';
-    
+
     await client.query(
       `INSERT INTO transacciones_caja (usuario_id, prestamo_id, abono_id, monto, tipo, descripcion, fecha)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
-        req.user.id, 
-        prestamo_id, 
-        nuevoAbono.id, 
-        tipo === 'interes' ? montoInteresReal : montoAbono, 
-        tipoCaja, 
-        `${conceptoDescr} - Cliente: ${loan.deudor}`, 
+        req.user.id,
+        prestamo_id,
+        nuevoAbono.id,
+        montoInsertar,
+        tipoCaja,
+        `${conceptoDescr} - Cliente: ${loan.deudor}`,
         fecha
       ]
     );
 
-    // Si hay exceso de intereses, crear abono a capital + entrada en caja
+    // Si hay exceso de intereses → capital extra
     let abonoCapitalExtra = null;
     if (montoCapitalExtra > 0) {
       const excesoNota = nota
@@ -1465,6 +1509,27 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       await client.query(
         'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
         [nuevoCapital, esActivo, prestamo_id]
+      );
+    }
+
+    // Si hay exceso de capital → intereses extra
+    let abonoInteresExtra = null;
+    if (montoInteresExtra > 0) {
+      const excesoNota = nota
+        ? `Exceso de pago capital: ${nota}`
+        : 'Exceso de pago de capital';
+      const intInsert = await client.query(
+        `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [prestamo_id, montoInteresExtra, 'interes', fecha, excesoNota]
+      );
+      abonoInteresExtra = intInsert.rows[0];
+
+      await client.query(
+        `INSERT INTO transacciones_caja (usuario_id, prestamo_id, abono_id, monto, tipo, descripcion, fecha)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [req.user.id, prestamo_id, abonoInteresExtra.id, montoInteresExtra, 'abono_interes',
+         `Exceso de pago capital - Cliente: ${loan.deudor}`, fecha]
       );
     }
     
