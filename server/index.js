@@ -550,15 +550,14 @@ app.get('/api/deudores', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/clientes -> Listar clientes del usuario (con deuda total)
+// GET /api/clientes -> Listar clientes del usuario (con deuda total + intereses)
 app.get('/api/clientes', authenticateToken, async (req, res) => {
   try {
     const userIds = await getSharedUserIds(req.user.id);
     const result = await db.query(
       `SELECT c.*, 
         COUNT(DISTINCT p.id) as total_prestamos,
-        COALESCE(SUM(p.capital_pendiente), 0) as deuda_capital,
-        COALESCE(SUM(p.interes_pendiente), 0) as deuda_intereses
+        COALESCE(SUM(p.capital_pendiente), 0) as deuda_capital
        FROM clientes c
        LEFT JOIN prestamos p ON p.cliente_id = c.id AND p.activo = TRUE
        WHERE c.usuario_id = ANY($1)
@@ -566,7 +565,33 @@ app.get('/api/clientes', authenticateToken, async (req, res) => {
        ORDER BY c.nombre ASC`,
       [userIds]
     );
-    res.json(result.rows);
+
+    // Calcular intereses pendientes en tiempo real para cada cliente
+    const prestamos = await db.query(
+      'SELECT * FROM prestamos WHERE usuario_id = ANY($1) AND activo = TRUE AND cliente_id IS NOT NULL',
+      [userIds]
+    );
+
+    const interesesPorCliente = {};
+    await Promise.all(prestamos.rows.map(async (loan) => {
+      const abonosRes = await db.query(
+        'SELECT monto, tipo, fecha FROM abonos WHERE prestamo_id = $1',
+        [loan.id]
+      );
+      try {
+        const calculo = calcularIntereses(loan, abonosRes.rows);
+        const cid = loan.cliente_id;
+        if (!interesesPorCliente[cid]) interesesPorCliente[cid] = 0;
+        interesesPorCliente[cid] += calculo.interes_pendiente;
+      } catch (e) {}
+    }));
+
+    const clientes = result.rows.map(c => ({
+      ...c,
+      deuda_intereses: interesesPorCliente[c.id] || 0,
+    }));
+
+    res.json(clientes);
   } catch (error) {
     console.error('Error al obtener clientes:', error);
     res.status(500).json({ mensaje: 'Error al obtener clientes.' });
