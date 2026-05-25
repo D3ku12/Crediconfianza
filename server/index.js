@@ -704,6 +704,17 @@ app.get('/api/clientes/:id/estado-cuenta', authenticateToken, async (req, res) =
       .filter(p => p.activo)
       .reduce((s, p) => s + parseFloat(p.capital_pendiente), 0);
 
+    // Calcular intereses pendientes en tiempo real
+    let interesesPendientes = 0;
+    for (const p of prestamos.filter(p => p.activo)) {
+      try {
+        const abonosP = abonos.filter(a => a.prestamo_id === p.id);
+        const calculo = calcularIntereses(p, abonosP);
+        interesesPendientes += calculo.interes_pendiente;
+      } catch (e) {}
+    }
+    const deudaTotal = deudaRestante + interesesPendientes;
+
     const hoy = ahoraCol().toLocaleDateString('es-CO', {
       day: '2-digit', month: '2-digit', year: 'numeric'
     });
@@ -878,8 +889,13 @@ app.get('/api/clientes/:id/estado-cuenta', authenticateToken, async (req, res) =
     </table>
   </div>
   <div class="total-box">
-    <span class="label">Restante por pagar</span>
-    <span class="monto">$${deudaRestante.toLocaleString('es-CO')}</span>
+    <div>
+      <span class="label">Total por pagar (capital + intereses)</span>
+      <div style="font-size:11px;color:#64748b;margin-top:4px;">
+        Capital: $${deudaRestante.toLocaleString('es-CO')} | Intereses: $${interesesPendientes.toLocaleString('es-CO')}
+      </div>
+    </div>
+    <span class="monto">$${deudaTotal.toLocaleString('es-CO')}</span>
   </div>
   <div class="pie">
     Documento generado automáticamente por PrestamoExpress
