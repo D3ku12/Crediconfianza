@@ -211,7 +211,7 @@ export default function App() {
           style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}
         >
           <button
-            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-gray-100"
+            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-black/5"
             onClick={() => setDrawerAbierto(true)}
             aria-label="Abrir men\u00fa"
           >
@@ -301,23 +301,29 @@ export default function App() {
             {user.es_admin && (
               <button
                 onClick={() => { setActiveTab('usuarios'); setShowMobileMore(false); }}
-                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium border-b transition-colors hover:bg-gray-50"
-                style={{ borderColor: 'var(--color-border)', color: activeTab === 'usuarios' ? 'var(--color-primary)' : 'var(--color-text)' }}
+                className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium border-b transition-all"
+                style={{ borderColor: 'var(--color-border)', color: activeTab === 'usuarios' ? 'var(--color-primary)' : 'var(--color-text)', background: 'transparent' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <Shield size={18} /> Usuarios
               </button>
             )}
             <button
               onClick={() => { setActiveTab('caja'); setShowMobileMore(false); }}
-              className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium border-b transition-colors hover:bg-gray-50"
-              style={{ borderColor: 'var(--color-border)', color: activeTab === 'caja' ? 'var(--color-primary)' : 'var(--color-text)' }}
+              className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium border-b transition-all"
+              style={{ borderColor: 'var(--color-border)', color: activeTab === 'caja' ? 'var(--color-primary)' : 'var(--color-text)', background: 'transparent' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               <Wallet size={18} /> Caja
             </button>
             <button
               onClick={() => { handleLogout(); setShowMobileMore(false); }}
-              className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium transition-colors hover:bg-red-50"
-              style={{ color: 'var(--color-danger)' }}
+              className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium transition-all"
+              style={{ color: 'var(--color-danger)', background: 'transparent' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               Cerrar sesi\u00f3n
             </button>
