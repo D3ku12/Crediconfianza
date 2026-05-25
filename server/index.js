@@ -1362,7 +1362,7 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
     // Verificar que el préstamo pertenece al grupo del usuario
     const userIds = await getSharedUserIds(req.user.id, client);
     const loanCheck = await client.query(
-      'SELECT id, capital_pendiente, deudor FROM prestamos WHERE id = $1 AND usuario_id = ANY($2)',
+      'SELECT id, capital_original, capital_pendiente, fecha_inicio, tasa_interes, deudor, activo FROM prestamos WHERE id = $1 AND usuario_id = ANY($2)',
       [prestamo_id, userIds]
     );
     
@@ -1398,6 +1398,26 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       );
     }
     
+    // Si el abono es de intereses, calcular si sobra para capital
+    if (tipo === 'interes') {
+      const abonosPrevios = await client.query(
+        'SELECT * FROM abonos WHERE prestamo_id = $1 ORDER BY fecha ASC',
+        [prestamo_id]
+      );
+      const calculo = calcularIntereses(loan, abonosPrevios.rows);
+      const interesPendiente = calculo.interes_pendiente;
+
+      if (montoAbono > interesPendiente) {
+        const exceso = montoAbono - interesPendiente;
+        const nuevoCapital = Math.max(0, capitalPendienteActual - exceso);
+        const esActivo = nuevoCapital > 0;
+        await client.query(
+          'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
+          [nuevoCapital, esActivo, prestamo_id]
+        );
+      }
+    }
+
     // Insertar el abono
     const abonoInsert = await client.query(
       `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota) 
