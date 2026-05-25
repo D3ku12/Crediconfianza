@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
-import { Shield, Bell, Menu, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal } from 'lucide-react';
+import { Shield, Bell, Menu, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal, X } from 'lucide-react';
 import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
 import { useTema } from './hooks/useTema';
@@ -25,6 +25,14 @@ function Spinner() {
   );
 }
 
+const menuItems = [
+  { id: 'resumen', label: 'Resumen', icon: BarChart3 },
+  { id: 'prestamos', label: 'Préstamos', icon: CircleDollarSign },
+  { id: 'clientes', label: 'Clientes', icon: Users },
+  { id: 'abonos', label: 'Abonos', icon: ReceiptIcon },
+  { id: 'caja', label: 'Caja', icon: Wallet },
+];
+
 export default function App() {
   useTema();
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -33,7 +41,7 @@ export default function App() {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [prestamos, setPrestamos] = useState([]);
   const [verNotifs, setVerNotifs] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [drawerAbierto, setDrawerAbierto] = useState(false);
   const [showMobileMore, setShowMobileMore] = useState(false);
 
   useEffect(() => {
@@ -48,7 +56,7 @@ export default function App() {
     return dias > 90 && p.total_abonado_interes === 0;
   }).map(p => ({
     id: p.id,
-    mensaje: `⚠️ ${p.deudor} lleva más de 3 meses sin abonar`
+    mensaje: `⚠️ ${p.deudor} lleva m\u00e1s de 3 meses sin abonar`
   })) || [];
 
   useEffect(() => {
@@ -98,87 +106,167 @@ export default function App() {
   const getTabTitle = () => {
     switch (activeTab) {
       case 'resumen': return 'Dashboard';
-      case 'prestamos': return 'Cartera de Préstamos';
-      case 'clientes': return 'Gestión de Clientes';
+      case 'prestamos': return 'Cartera de Pr\u00e9stamos';
+      case 'clientes': return 'Gesti\u00f3n de Clientes';
       case 'abonos': return 'Procesamiento de Abonos';
       case 'caja': return 'Control de Caja';
-      case 'usuarios': return 'Administración';
+      case 'usuarios': return 'Administraci\u00f3n';
       default: return 'Dashboard';
     }
   };
 
+  const userMenuItems = user?.es_admin
+    ? [...menuItems, { id: 'usuarios', label: 'Usuarios', icon: Shield }]
+    : menuItems;
+
   const mobileNavItems = [
     { id: 'resumen', icon: BarChart3, label: 'Resumen' },
-    { id: 'prestamos', icon: CircleDollarSign, label: 'Préstamos' },
+    { id: 'prestamos', icon: CircleDollarSign, label: 'Pr\u00e9stamos' },
     { id: 'clientes', icon: Users, label: 'Clientes' },
     { id: 'abonos', icon: ReceiptIcon, label: 'Abonos' },
-    { id: 'more', icon: MoreHorizontal, label: 'Más' },
+    { id: 'more', icon: MoreHorizontal, label: 'M\u00e1s' },
   ];
 
   return (
     <ToastProvider>
-    <div className="flex min-h-screen" style={{ background: 'var(--color-bg)' }}>
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        user={user} 
+    <div className="min-h-screen w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
+      {/* Desktop Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
         onLogout={handleLogout}
-        isMobileOpen={mobileMenuOpen}
-        closeMobileMenu={() => setMobileMenuOpen(false)}
       />
-      
-      <main className="flex-1 flex flex-col min-w-0" style={{ marginLeft: '260px' }}>
-        <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm" style={{ background: 'var(--color-card)' }}>
-          <div className="flex items-center gap-3 px-4 py-3 lg:px-6">
-            <button className="lg:hidden flex-shrink-0 p-2 rounded-lg hover:bg-gray-100" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú">
-              <Menu size={22} />
-            </button>
-            <h1 className="text-lg font-bold truncate flex-1" style={{ color: 'var(--color-text)' }}>
-              {getTabTitle()}
-            </h1>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <SelectorTema />
-              <div className="relative">
-                <button className="relative w-9 h-9 rounded-full border flex items-center justify-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', color: 'var(--color-text-soft)' }} onClick={() => setVerNotifs(!verNotifs)} aria-label="Notificaciones">
-                  <Bell size={16} />
-                  {notificaciones.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--color-danger)' }}>
-                      {notificaciones.length}
-                    </span>
+
+      {/* Mobile Drawer */}
+      <div
+        className={`md:hidden fixed inset-0 z-50 transition-all duration-300 ${drawerAbierto ? 'visible' : 'invisible'}`}
+      >
+        <div
+          className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${drawerAbierto ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setDrawerAbierto(false)}
+        />
+        <aside
+          className={`absolute left-0 top-0 h-full w-[280px] bg-white shadow-2xl border-r transition-transform duration-300 overflow-y-auto ${drawerAbierto ? 'translate-x-0' : '-translate-x-full'}`}
+          style={{ background: 'var(--color-card-solid, #ffffff)', borderColor: 'var(--color-border)' }}
+        >
+          <button
+            className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-lg border"
+            style={{ borderColor: 'var(--color-border)' }}
+            onClick={() => setDrawerAbierto(false)}
+            aria-label="Cerrar men\u00fa"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-3 px-4 py-5 mb-4">
+            <span className="text-2xl">🤝</span>
+            <span className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--color-primary)' }}>
+              CREDIALIADO
+            </span>
+          </div>
+          <nav className="px-3 space-y-0.5">
+            {userMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id); setDrawerAbierto(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all relative"
+                  style={{
+                    color: isActive ? '#4F46E5' : 'var(--color-text-secondary)',
+                    background: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
+                  }}
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#6C63FF' }} />
                   )}
+                  <Icon size={20} className="flex-shrink-0" />
+                  <span>{item.label}</span>
                 </button>
-                {verNotifs && (
-                  <div className="absolute top-12 right-0 w-72 lg:w-80 z-[1000] rounded-xl shadow-xl border overflow-hidden animate-fade-in" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                    <div className="px-4 py-3 border-b text-sm font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                      Notificaciones
-                    </div>
-                    {notificaciones.length === 0 ? (
-                      <p className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>✅ Todo al día, sin alertas pendientes</p>
-                    ) : (
-                      notificaciones.map(n => (
-                        <div key={n.id} className="px-4 py-2.5 text-sm border-b last:border-b-0" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                          {n.mensaje}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
+              );
+            })}
+          </nav>
+          <div className="mt-6 px-3">
+            <button
+              onClick={() => { handleLogout(); setDrawerAbierto(false); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all"
+              style={{ color: '#EF4444' }}
+            >
+              Cerrar Sesi\u00f3n
+            </button>
+          </div>
+          {user && (
+            <div className="mt-auto px-3 pt-4 border-t mx-3" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="flex items-center gap-3 py-2">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-primary)' }}>
+                  {user.nombre_usuario?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{user.nombre_usuario}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{user.es_admin ? 'Administrador' : 'Gestor'}</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 px-4 lg:px-6 pb-3">
-            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              Hola, <strong style={{ color: 'var(--color-text)' }}>{user.nombre_usuario?.split(' ')[0]}</strong>
-            </span>
-            {user.es_admin && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full" style={{ color: 'var(--warning-text)', background: 'var(--warning-bg)', border: '1px solid var(--warning-border)' }}>
-                <Shield size={8} /> Admin
-              </span>
-            )}
+          )}
+        </aside>
+      </div>
+
+      {/* Main content area */}
+      <main className="ml-0 md:ml-[260px] min-h-screen w-full overflow-x-hidden flex flex-col">
+        {/* Fixed Header */}
+        <header
+          className="fixed top-0 right-0 left-0 md:left-[260px] z-30 h-14 flex items-center gap-3 px-4 border-b shadow-sm"
+          style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+        >
+          <button
+            className="md:hidden flex-shrink-0 p-2 rounded-lg hover:bg-gray-100"
+            onClick={() => setDrawerAbierto(true)}
+            aria-label="Abrir men\u00fa"
+          >
+            <Menu size={22} />
+          </button>
+          <h1 className="text-lg font-bold truncate flex-1" style={{ color: 'var(--color-text)' }}>
+            {getTabTitle()}
+          </h1>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <SelectorTema />
+            <div className="relative">
+              <button
+                className="relative w-9 h-9 rounded-full border flex items-center justify-center"
+                style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', color: 'var(--color-text-soft)' }}
+                onClick={() => setVerNotifs(!verNotifs)}
+                aria-label="Notificaciones"
+              >
+                <Bell size={16} />
+                {notificaciones.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--color-danger)' }}>
+                    {notificaciones.length}
+                  </span>
+                )}
+              </button>
+              {verNotifs && (
+                <div className="absolute top-12 right-0 w-72 lg:w-80 z-[1000] rounded-xl shadow-xl border overflow-hidden animate-fade-in" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="px-4 py-3 border-b text-sm font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                    Notificaciones
+                  </div>
+                  {notificaciones.length === 0 ? (
+                    <p className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>✅ Todo al d\u00eda, sin alertas pendientes</p>
+                  ) : (
+                    notificaciones.map(n => (
+                      <div key={n.id} className="px-4 py-2.5 text-sm border-b last:border-b-0" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                        {n.mensaje}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        <section className="flex-1 p-4 lg:p-6 min-w-0 pt-[76px] sm:pt-4 lg:pt-6">
+        {/* Content with padding for fixed header */}
+        <section className="flex-1 p-4 lg:p-6 pt-20 pb-24 md:pt-24 md:pb-6 min-w-0 overflow-x-hidden">
           <Suspense fallback={<Spinner />}>
             {renderTabContent()}
           </Suspense>
@@ -186,7 +274,7 @@ export default function App() {
       </main>
 
       {/* Mobile Bottom Navbar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 safe-area-bottom shadow-lg" style={{ background: 'var(--color-card)' }}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t safe-area-bottom shadow-lg" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
         <div className="flex items-center justify-around py-1.5">
           {mobileNavItems.map((item) => {
             const Icon = item.icon;
@@ -216,9 +304,9 @@ export default function App() {
 
       {/* Mobile More Drawer */}
       {showMobileMore && (
-        <div className="lg:hidden fixed inset-0 z-[60]" onClick={() => setShowMobileMore(false)}>
+        <div className="md:hidden fixed inset-0 z-40" onClick={() => setShowMobileMore(false)}>
           <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute bottom-16 left-4 right-4 rounded-2xl shadow-2xl border overflow-hidden animate-slide-up" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+          <div className="absolute bottom-20 left-4 right-4 rounded-2xl shadow-2xl border overflow-hidden animate-slide-up" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
             {user.es_admin && (
               <button
                 onClick={() => { setActiveTab('usuarios'); setShowMobileMore(false); }}
@@ -240,7 +328,7 @@ export default function App() {
               className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium transition-colors hover:bg-red-50"
               style={{ color: 'var(--color-danger)' }}
             >
-              Cerrar sesión
+              Cerrar sesi\u00f3n
             </button>
           </div>
         </div>
