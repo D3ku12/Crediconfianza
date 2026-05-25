@@ -115,7 +115,12 @@ const Clientes = memo(function Clientes() {
               {cliente.telefono && <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>📱 {cliente.telefono}</span>}
               {cliente.documento && <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>🪪 {cliente.documento}</span>}
               {parseFloat(cliente.total_prestamos) > 0 && <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>📋 {cliente.total_prestamos} préstamo{parseFloat(cliente.total_prestamos) !== 1 ? 's' : ''}</span>}
-              {parseFloat(cliente.deuda_total) > 0 && <span className="text-xs font-semibold" style={{ color: 'var(--color-danger)' }}>💰 ${parseFloat(cliente.deuda_total).toLocaleString('es-CO')} pendiente</span>}
+              {parseFloat(cliente.deuda_capital) > 0 && (
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-danger)' }}>
+                  💰 ${(parseFloat(cliente.deuda_capital) + parseFloat(cliente.deuda_intereses)).toLocaleString('es-CO')}
+                  <span className="font-normal opacity-75"> (${parseFloat(cliente.deuda_capital).toLocaleString('es-CO')} capital + ${parseFloat(cliente.deuda_intereses).toLocaleString('es-CO')} intereses)</span>
+                </span>
+              )}
             </div>
           </div>
           <div className="flex gap-1.5 flex-shrink-0">

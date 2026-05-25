@@ -460,7 +460,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                     <select value={clienteSeleccionado} onChange={e => { setClienteSeleccionado(e.target.value); const c = clientes.find(cl => cl.id === parseInt(e.target.value)); if (c) setDeudor(c.nombre); }}
                       style={{ ...inputFocusStyle, width: '100%', padding: '12px 14px', borderRadius: '12px', fontSize: '16px', cursor: 'pointer' }}>
                       <option value="" disabled>Selecciona un cliente</option>
-                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}{parseFloat(c.deuda_total) > 0 ? ` — Deuda: $${parseFloat(c.deuda_total).toLocaleString('es-CO')}` : ' — Sin deuda activa'}</option>)}
+                      {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}{parseFloat(c.deuda_capital) > 0 ? ` — Deuda: $${(parseFloat(c.deuda_capital) + parseFloat(c.deuda_intereses)).toLocaleString('es-CO')}` : ' — Sin deuda activa'}</option>)}
                     </select>
                   )}
                 </div>

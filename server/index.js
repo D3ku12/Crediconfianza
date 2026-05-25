@@ -557,7 +557,8 @@ app.get('/api/clientes', authenticateToken, async (req, res) => {
     const result = await db.query(
       `SELECT c.*, 
         COUNT(DISTINCT p.id) as total_prestamos,
-        COALESCE(SUM(p.capital_pendiente), 0) as deuda_total
+        COALESCE(SUM(p.capital_pendiente), 0) as deuda_capital,
+        COALESCE(SUM(p.interes_pendiente), 0) as deuda_intereses
        FROM clientes c
        LEFT JOIN prestamos p ON p.cliente_id = c.id AND p.activo = TRUE
        WHERE c.usuario_id = ANY($1)
