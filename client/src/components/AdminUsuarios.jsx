@@ -89,13 +89,13 @@ export default function AdminUsuarios() {
           Los usuarios del <strong>mismo grupo</strong> comparten préstamos, abonos, caja y resumen.
           Los usuarios <strong>sin grupo</strong> tienen cuenta individual.
         </p>
-        <form onSubmit={handleCrearGrupo} className="flex gap-3 mb-4">
-          <div className="relative flex-1">
+        <form onSubmit={handleCrearGrupo} className="flex gap-2 w-full mb-4">
+          <div className="relative flex-1 min-w-0">
             <FolderPlus size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-            <input type="text" placeholder="Nombre del nuevo grupo" value={nuevoGrupoNombre} onChange={(e) => setNuevoGrupoNombre(e.target.value)} disabled={creandoGrupo}
+            <input type="text" placeholder="Nombre del grupo" value={nuevoGrupoNombre} onChange={(e) => setNuevoGrupoNombre(e.target.value)} disabled={creandoGrupo}
               className={inputClasses} style={{ paddingLeft: '2.25rem', ...inputStyle }} />
           </div>
-          <button type="submit" disabled={creandoGrupo || !nuevoGrupoNombre.trim()} className="min-h-[44px] px-5 rounded-xl text-sm font-semibold text-white transition-all shadow-sm" style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>{creandoGrupo ? '...' : 'Crear Grupo'}</button>
+          <button type="submit" disabled={creandoGrupo || !nuevoGrupoNombre.trim()} className="min-h-[44px] px-4 rounded-xl text-sm font-semibold text-white transition-all shadow-sm whitespace-nowrap flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>{creandoGrupo ? '...' : 'Crear Grupo'}</button>
         </form>
         {grupos.length === 0 ? (
           <p className="text-sm text-center py-4" style={{ color: 'var(--color-text-muted)' }}>No hay grupos creados.</p>
@@ -107,9 +107,9 @@ export default function AdminUsuarios() {
                   <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{grupo.nombre}</span>
                   <button onClick={() => handleEliminarGrupo(grupo.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border transition-all" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} title="Eliminar grupo"><Trash2 size={14} /></button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {grupo.miembros?.length > 0 ? grupo.miembros.map((m) => (
-                    <span key={m.id} className="px-2 py-0.5 rounded-full text-[11px] font-medium" style={{ background: m.es_admin ? 'var(--warning-bg)' : 'var(--success-bg)', color: m.es_admin ? 'var(--warning-text)' : 'var(--success-text)', border: `1px solid ${m.es_admin ? 'var(--warning-border)' : 'var(--success-border)'}` }}>{m.nombre_usuario}</span>
+                    <span key={m.id} className="px-2.5 py-0.5 rounded-full text-[11px] font-medium truncate max-w-[140px]" style={{ background: m.es_admin ? 'var(--warning-bg)' : 'var(--success-bg)', color: m.es_admin ? 'var(--warning-text)' : 'var(--success-text)', border: `1px solid ${m.es_admin ? 'var(--warning-border)' : 'var(--success-border)'}` }}>{m.nombre_usuario}</span>
                   )) : <span className="text-xs italic" style={{ color: 'var(--color-text-muted)' }}>Sin miembros</span>}
                 </div>
               </div>
@@ -126,27 +126,29 @@ export default function AdminUsuarios() {
         ) : (
           <div className="space-y-3">
             {usuarios.map((u) => (
-              <div key={u.id} className="flex items-center gap-3 p-4 rounded-xl border" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
-                <div className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-primary)' }}>
-                  {u.nombre_usuario.charAt(0).toUpperCase()}
+              <div key={u.id} className="flex flex-col gap-2 p-4 rounded-2xl border" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-primary)' }}>
+                    {u.nombre_usuario.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate max-w-[160px] sm:max-w-none" style={{ color: 'var(--color-text)' }}>{u.nombre_usuario}</p>
+                    <p className="text-xs truncate max-w-[120px] sm:max-w-none" style={{ color: 'var(--color-text-muted)' }}>@{u.username}</p>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0" style={{ background: u.es_admin ? 'var(--warning-bg)' : 'var(--success-bg)', color: u.es_admin ? 'var(--warning-text)' : 'var(--success-text)', border: `1px solid ${u.es_admin ? 'var(--warning-border)' : 'var(--success-border)'}` }}>
+                    {u.es_admin ? 'Admin' : 'Gestor'}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{u.nombre_usuario}</p>
-                  <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>@{u.username}</p>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0" style={{ background: u.es_admin ? 'var(--warning-bg)' : 'var(--success-bg)', color: u.es_admin ? 'var(--warning-text)' : 'var(--success-text)', border: `1px solid ${u.es_admin ? 'var(--warning-border)' : 'var(--success-border)'}` }}>
-                  {u.es_admin ? 'Admin' : 'Gestor'}
-                </span>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs" style={{ color: u.grupo_nombre ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>{u.grupo_nombre || 'Individual'}</span>
+                <div className="flex items-center gap-2 pl-[52px] sm:pl-0">
+                  <span className="text-xs whitespace-nowrap" style={{ color: u.grupo_nombre ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>{u.grupo_nombre || 'Individual'}</span>
                   <select value={u.grupo_id || ''} onChange={(e) => handleCambiarGrupo(u.id, e.target.value)}
-                    className="rounded-xl border px-2 py-1.5 text-xs outline-none cursor-pointer"
-                    style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)', minWidth: '120px' }} aria-label={`Cambiar grupo de ${u.nombre_usuario}`}>
+                    className="flex-1 rounded-xl border px-2 py-1.5 text-xs outline-none cursor-pointer min-w-0"
+                    style={{ borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' }} aria-label={`Cambiar grupo de ${u.nombre_usuario}`}>
                     <option value="">Sin grupo</option>
                     {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
                   </select>
+                  <button onClick={() => handleEliminarUsuario(u.id, u.nombre_usuario)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border transition-all flex-shrink-0" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} title="Eliminar"><Trash2 size={14} /></button>
                 </div>
-                <button onClick={() => handleEliminarUsuario(u.id, u.nombre_usuario)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border transition-all flex-shrink-0" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} title="Eliminar"><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
@@ -161,7 +163,7 @@ export default function AdminUsuarios() {
         </div>
         {error && <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium text-center" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>{error}</div>}
         <form onSubmit={handleRegisterUser}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="reg-nombre" className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-text-soft)' }}>Nombre Completo *</label>
               <div className="relative">

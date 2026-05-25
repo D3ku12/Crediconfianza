@@ -178,7 +178,7 @@ export default function App() {
           </div>
         </header>
 
-        <section className="flex-1 p-4 lg:p-6 min-w-0">
+        <section className="flex-1 p-4 lg:p-6 min-w-0 pt-[76px] sm:pt-4 lg:pt-6">
           <Suspense fallback={<Spinner />}>
             {renderTabContent()}
           </Suspense>
