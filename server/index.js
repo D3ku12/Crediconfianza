@@ -426,6 +426,44 @@ app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res)
   }
 });
 
+// ==========================================
+// PERFIL DEL USUARIO (cambiar nombre / contraseña)
+// ==========================================
+
+app.put('/api/auth/perfil', authenticateToken, async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre?.trim()) return res.status(400).json({ mensaje: 'El nombre es requerido.' });
+    const result = await db.query('UPDATE usuarios SET nombre_usuario = $1 WHERE id = $2 RETURNING id, nombre_usuario, username, es_admin, grupo_id', [nombre.trim(), req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
+    res.json(result.rows[0]);
+    emitChange('usuarios');
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    res.status(500).json({ mensaje: 'Error al actualizar perfil.' });
+  }
+});
+
+app.put('/api/auth/password', authenticateToken, async (req, res) => {
+  try {
+    const { actual, nueva } = req.body;
+    if (!actual || !nueva) return res.status(400).json({ mensaje: 'Contraseña actual y nueva son requeridas.' });
+    if (nueva.length < 4) return res.status(400).json({ mensaje: 'La nueva contraseña debe tener al menos 4 caracteres.' });
+
+    const user = await db.query('SELECT password_hash FROM usuarios WHERE id = $1', [req.user.id]);
+    if (user.rows.length === 0) return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
+
+    const valida = await bcrypt.compare(actual, user.rows[0].password_hash);
+    if (!valida) return res.status(400).json({ mensaje: 'La contraseña actual no es correcta.' });
+
+    const hash = await bcrypt.hash(nueva, 10);
+    await db.query('UPDATE usuarios SET password_hash = $1 WHERE id = $2', [hash, req.user.id]);
+    res.json({ mensaje: 'Contraseña actualizada con éxito.' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    res.status(500).json({ mensaje: 'Error al cambiar contraseña.' });
+  }
+});
 
 // ==========================================
 // RUTAS DE GESTIÓN DE GRUPOS Y USUARIOS (ADMIN)

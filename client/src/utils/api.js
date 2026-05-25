@@ -161,6 +161,19 @@ export const api = {
       method: 'DELETE',
     }),
 
+  // Perfil de usuario
+  updatePerfil: (nombre) =>
+    request('/api/auth/perfil', {
+      method: 'PUT',
+      body: JSON.stringify({ nombre }),
+    }),
+
+  changePassword: (actual, nueva) =>
+    request('/api/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ actual, nueva }),
+    }),
+
   // Estado de cuenta (retorna HTML)
   getPrestamoEstadoCuenta: (id) => requestHtml(`/api/prestamos/${id}/estado-cuenta`),
   getClienteEstadoCuenta: (id) => requestHtml(`/api/clientes/${id}/estado-cuenta`),

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, Shield } from 'lucide-react';
+import { BarChart3, Receipt, CircleDollarSign, Users, LogOut, Wallet, Shield, User } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
   const menuItems = [
@@ -47,6 +47,16 @@ export default function Sidebar({ activeTab, setActiveTab, user, onLogout }) {
         })}
 
         <div className="pt-4 mt-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <button
+            onClick={() => setActiveTab('perfil')}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(99,102,241,0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <User size={20} className="flex-shrink-0" />
+            <span>Mi Perfil</span>
+          </button>
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all"

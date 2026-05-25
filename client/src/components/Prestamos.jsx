@@ -4,7 +4,7 @@ import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
-import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileDown } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileDown, Filter, X } from 'lucide-react';
 import { generarEstadoCuentaPDF } from '../utils/pdfGenerator';
 import { subscribe } from '../contexts/RealtimeContext';
 
@@ -15,6 +15,12 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [filtroEstado, setFiltroEstado] = useState('todos');
+  const [filtroMora, setFiltroMora] = useState('todas');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoanId, setEditingLoanId] = useState(null);
@@ -163,7 +169,37 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const tasaNum = parseFloat(tasaInteres) || 0;
   const interesMensualPreview = capitalNumerico * tasaNum / 100;
 
-  const filteredPrestamos = prestamos.filter(p => p.deudor.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredPrestamos = prestamos.filter(p => {
+    const matchBusqueda = p.deudor.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const esActivo = parseFloat(p.capital_pendiente) > 0;
+    const matchEstado = filtroEstado === 'todos' ||
+      (filtroEstado === 'activos' && esActivo) ||
+      (filtroEstado === 'saldados' && !esActivo);
+
+    const fechaInicio = p.fecha_inicio ? new Date(p.fecha_inicio) : null;
+    const matchFecha = (!fechaDesde || (fechaInicio && fechaInicio >= new Date(fechaDesde))) &&
+      (!fechaHasta || (fechaInicio && fechaInicio <= new Date(fechaHasta)));
+
+    const diasMora = p.dias_transcurridos || 0;
+    const matchMora = filtroMora === 'todas' ||
+      (filtroMora === 'al_dia' && (!esActivo || diasMora <= 0)) ||
+      (filtroMora === '1_30' && esActivo && diasMora >= 1 && diasMora <= 30) ||
+      (filtroMora === '31_60' && esActivo && diasMora >= 31 && diasMora <= 60) ||
+      (filtroMora === 'mas_60' && esActivo && diasMora > 60);
+
+    return matchBusqueda && matchEstado && matchFecha && matchMora;
+  });
+
+  const limpiarFiltros = () => {
+    setFiltroEstado('todos');
+    setFiltroMora('todas');
+    setFechaDesde('');
+    setFechaHasta('');
+    setSearchTerm('');
+  };
+
+  const hayFiltrosActivos = filtroEstado !== 'todos' || filtroMora !== 'todas' || fechaDesde || fechaHasta;
 
   const inputClasses = "w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-all";
   const inputFocusStyle = { borderColor: 'var(--color-border)', background: 'var(--bg-input)', color: 'var(--color-text)' };
@@ -185,18 +221,79 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
           <input type="text" placeholder="Buscar deudor..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             className={inputClasses} style={{ paddingLeft: '2.25rem', ...inputFocusStyle }} />
         </div>
+        <button onClick={() => setMostrarFiltros(!mostrarFiltros)}
+          className="inline-flex items-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium transition-all border"
+          style={{
+            borderColor: hayFiltrosActivos ? 'var(--color-accent)' : 'var(--color-border)',
+            color: hayFiltrosActivos ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+            background: hayFiltrosActivos ? 'var(--color-accent-soft)' : 'transparent'
+          }}>
+          <Filter size={16} /> Filtros {hayFiltrosActivos && <span className="w-2 h-2 rounded-full" style={{ background: 'var(--color-accent)' }} />}
+        </button>
         <button onClick={handleOpenModal}
           className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-sm"
           style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
           <Plus size={18} /> <span className="hidden sm:inline">Nuevo Préstamo</span>
         </button>
       </div>
+
+      {/* Panel de filtros avanzados */}
+      {mostrarFiltros && (
+        <div className="mb-4 p-4 rounded-2xl border space-y-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Estado</label>
+              <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+                className={inputClasses} style={{ ...inputFocusStyle }}>
+                <option value="todos">Todos</option>
+                <option value="activos">Activos</option>
+                <option value="saldados">Saldados</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Mora</label>
+              <select value={filtroMora} onChange={e => setFiltroMora(e.target.value)}
+                className={inputClasses} style={{ ...inputFocusStyle }}>
+                <option value="todas">Todas</option>
+                <option value="al_dia">Al día</option>
+                <option value="1_30">1 - 30 días</option>
+                <option value="31_60">31 - 60 días</option>
+                <option value="mas_60">Más de 60 días</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Desde</label>
+              <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
+                className={inputClasses} style={{ ...inputFocusStyle }} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>Hasta</label>
+              <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
+                className={inputClasses} style={{ ...inputFocusStyle }} />
+            </div>
+          </div>
+          {hayFiltrosActivos && (
+            <button onClick={limpiarFiltros}
+              className="flex items-center gap-1.5 text-xs font-medium transition-all"
+              style={{ color: 'var(--color-danger)' }}>
+              <X size={14} /> Limpiar filtros
+            </button>
+          )}
+        </div>
+      )}
+
+      {filteredPrestamos.length > 0 && (
+        <p className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>
+          Mostrando {filteredPrestamos.length} de {prestamos.length} préstamo{prestamos.length !== 1 ? 's' : ''}
+          {hayFiltrosActivos && ' (filtrados)'}
+        </p>
+      )}
 
       {loading ? (
         <div className="space-y-3">

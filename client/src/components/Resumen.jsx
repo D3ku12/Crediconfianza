@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, memo } from 'react';
 import { api, formatCOP } from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock, Ban } from 'lucide-react';
+import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock, Ban, CheckCircle } from 'lucide-react';
 import { subscribe } from '../contexts/RealtimeContext';
 
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, delay = 0 }) {
@@ -114,6 +114,18 @@ export default function Resumen() {
     return activeLoans.find(p => (parseFloat(p.interes_pendiente) || 0) === mayorInteresPendiente);
   }, [activeLoans, mayorInteresPendiente]);
 
+  const moraBuckets = useMemo(() => {
+    const buckets = { alDia: 0, r1_30: 0, r31_60: 0, mas60: 0, countAlDia: 0, count1_30: 0, count31_60: 0, countMas60: 0 };
+    activeLoans.forEach(p => {
+      const dias = p.dias_transcurridos || 0;
+      if (dias <= 0) { buckets.alDia += parseFloat(p.capital_pendiente) || 0; buckets.countAlDia++; }
+      else if (dias <= 30) { buckets.r1_30 += parseFloat(p.capital_pendiente) || 0; buckets.count1_30++; }
+      else if (dias <= 60) { buckets.r31_60 += parseFloat(p.capital_pendiente) || 0; buckets.count31_60++; }
+      else { buckets.mas60 += parseFloat(p.capital_pendiente) || 0; buckets.countMas60++; }
+    });
+    return buckets;
+  }, [activeLoans]);
+
   if (loading) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -176,6 +188,14 @@ export default function Resumen() {
         {cards.map((card, idx) => (
           <MetricCard key={idx} title={card.title} value={card.value} icon={card.icon} delay={0.03 * idx} />
         ))}
+      </div>
+
+      {/* Dashboard de mora */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard title="Al día" value={`${formatCOP(moraBuckets.alDia)} (${moraBuckets.countAlDia})`} icon={CheckCircle} delay={0.18} />
+        <MetricCard title="1 - 30 días" value={`${formatCOP(moraBuckets.r1_30)} (${moraBuckets.count1_30})`} icon={Clock} delay={0.21} />
+        <MetricCard title="31 - 60 días" value={`${formatCOP(moraBuckets.r31_60)} (${moraBuckets.count31_60})`} icon={AlertTriangle} delay={0.24} />
+        <MetricCard title="+ 60 días" value={`${formatCOP(moraBuckets.mas60)} (${moraBuckets.countMas60})`} icon={AlertTriangle} delay={0.27} />
       </div>
 
       <div className="bg-white rounded-2xl border p-5 lg:p-6 shadow-sm animate-fade-slide-up" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', animationDelay: '0.18s', opacity: 0 }}>

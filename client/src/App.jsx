@@ -3,7 +3,7 @@ import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
 import { RealtimeProvider } from './contexts/RealtimeContext';
-import { Shield, Bell, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal } from 'lucide-react';
+import { Shield, Bell, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal, User } from 'lucide-react';
 import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
 import { useTema } from './hooks/useTema';
@@ -14,6 +14,7 @@ const Clientes = lazy(() => import('./components/Clientes'));
 const Abonos = lazy(() => import('./components/Abonos'));
 const AdminUsuarios = lazy(() => import('./components/AdminUsuarios'));
 const Caja = lazy(() => import('./components/Caja'));
+const Perfil = lazy(() => import('./components/Perfil'));
 
 function Spinner() {
   return (
@@ -85,6 +86,14 @@ export default function App() {
     setUser(null);
   }, []);
 
+  const handleUserUpdate = useCallback((updated) => {
+    setUser(prev => {
+      const nuevo = { ...prev, ...updated };
+      localStorage.setItem('user', JSON.stringify(nuevo));
+      return nuevo;
+    });
+  }, []);
+
   if (!token || !user) {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
@@ -99,6 +108,7 @@ export default function App() {
         return <Abonos selectedLoan={selectedLoan} setSelectedLoan={setSelectedLoan} />;
       case 'caja': return <Caja />;
       case 'usuarios': return user.es_admin ? <AdminUsuarios /> : <Resumen />;
+      case 'perfil': return <Perfil user={user} onUserUpdate={handleUserUpdate} />;
       default: return <Resumen />;
     }
   };
@@ -111,6 +121,7 @@ export default function App() {
       case 'abonos': return 'Procesamiento de Abonos';
       case 'caja': return 'Control de Caja';
       case 'usuarios': return 'Administraci\u00f3n';
+      case 'perfil': return 'Mi Perfil';
       default: return 'Dashboard';
     }
   };
@@ -234,6 +245,15 @@ export default function App() {
                 <Shield size={18} /> Usuarios
               </button>
             )}
+            <button
+              onClick={() => { setActiveTab('perfil'); setShowMobileMore(false); }}
+              className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium border-b transition-all"
+              style={{ borderColor: 'var(--color-border)', color: activeTab === 'perfil' ? 'var(--color-primary)' : 'var(--color-text)', background: 'transparent' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <User size={18} /> Mi Perfil
+            </button>
             <button
               onClick={() => { setActiveTab('caja'); setShowMobileMore(false); }}
               className="w-full flex items-center gap-3 px-5 py-4 text-sm font-medium border-b transition-all"
