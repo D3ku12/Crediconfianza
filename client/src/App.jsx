@@ -204,7 +204,7 @@ export default function App() {
       </div>
 
       {/* Main content area */}
-      <main className="ml-0 md:ml-[260px] min-h-screen w-full overflow-x-hidden flex flex-col">
+      <main className="ml-0 md:ml-[260px] min-h-screen overflow-x-hidden flex flex-col">
         {/* Fixed Header */}
         <header
           className="fixed top-0 right-0 left-0 md:left-[260px] z-30 h-14 flex items-center gap-3 px-4 border-b shadow-sm"
