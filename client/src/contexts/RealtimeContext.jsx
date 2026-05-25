@@ -1,38 +1,44 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import { API_URL } from '../config/api'
 
-const RealtimeContext = createContext(null)
+const listeners = new Set()
+let socket = null
+
+export function subscribe(fn) {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
+
+function notify() {
+  listeners.forEach(fn => {
+    try { fn() } catch (e) { console.error(e) }
+  })
+}
 
 export function RealtimeProvider({ children }) {
-  const [refreshKey, setRefreshKey] = useState(0)
-
-  const increment = useCallback(() => setRefreshKey(k => k + 1), [])
+  const started = useRef(false)
 
   useEffect(() => {
-    const socket = io(API_URL, {
+    if (started.current) return
+    started.current = true
+
+    socket = io(API_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000
     })
 
-    socket.on('dataChange', () => {
-      increment()
-    })
+    socket.on('dataChange', () => { notify() })
 
-    return () => { socket.disconnect() }
-  }, [increment])
+    const interval = setInterval(notify, 30000)
 
-  return (
-    <RealtimeContext.Provider value={{ refreshKey }}>
-      {children}
-    </RealtimeContext.Provider>
-  )
-}
+    return () => {
+      if (socket) { socket.disconnect(); socket = null }
+      clearInterval(interval)
+    }
+  }, [])
 
-export function useRefresh() {
-  const ctx = useContext(RealtimeContext)
-  if (!ctx) throw new Error('useRefresh must be used within RealtimeProvider')
-  return ctx.refreshKey
+  return children
 }

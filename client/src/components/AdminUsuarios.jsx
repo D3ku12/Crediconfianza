@@ -3,11 +3,10 @@ import { api } from '../utils/api';
 import { useToast } from './Toast';
 import { ModalConfirm } from './ModalConfirm';
 import { User, Lock, Shield, Users, FolderPlus, Trash2, UserPlus, Wrench } from 'lucide-react';
-import { useRefresh } from '../contexts/RealtimeContext';
+import { subscribe } from '../contexts/RealtimeContext';
 
 export default function AdminUsuarios() {
   const toast = useToast();
-  const refreshKey = useRefresh();
   const [grupos, setGrupos] = useState([]);
   const [nuevoGrupoNombre, setNuevoGrupoNombre] = useState('');
   const [creandoGrupo, setCreandoGrupo] = useState(false);
@@ -38,7 +37,7 @@ export default function AdminUsuarios() {
 
   useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => { if (refreshKey > 0) refreshData(); }, [refreshKey]);
+  useEffect(() => subscribe(refreshData), []);
 
   const handleCrearGrupo = async (e) => {
     e.preventDefault();

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, memo } from 'react';
 import { api, formatCOP } from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock, Ban } from 'lucide-react';
-import { useRefresh } from '../contexts/RealtimeContext';
+import { subscribe } from '../contexts/RealtimeContext';
 
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, delay = 0 }) {
   return (
@@ -59,7 +59,6 @@ function useWindowSize() {
 }
 
 export default function Resumen() {
-  const refreshKey = useRefresh();
   const { width: windowWidth } = useWindowSize();
   const chartHeight = windowWidth < 768 ? 250 : 350;
   const [data, setData] = useState(null);
@@ -90,7 +89,7 @@ export default function Resumen() {
 
   useEffect(() => { fetchData(); }, []);
 
-  useEffect(() => { if (refreshKey > 0) refreshData(); }, [refreshKey]);
+  useEffect(() => subscribe(refreshData), []);
 
   const prestamosEnRiesgo = useMemo(() => {
     const hoy = new Date();
