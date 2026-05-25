@@ -47,7 +47,7 @@ export function generarEstadoCuentaPDF(prestamo, abonos = [], cliente = {}, nomb
     startY: 52,
     body: [
       ['Cliente',      prestamo.deudor],
-      ['Teléfono',     prestamo.telefono || '—'],
+      ['Teléfono',     cliente?.telefono || prestamo.cliente_telefono || '—'],
       ['Fecha inicio', new Date(prestamo.fecha_inicio).toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })],
       ['Tasa mensual', `${prestamo.tasa_interes}% mensual`],
     ],

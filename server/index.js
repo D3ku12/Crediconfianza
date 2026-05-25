@@ -1158,7 +1158,10 @@ app.get('/api/prestamos/:id/estado-cuenta', authenticateToken, async (req, res) 
   try {
     const userIds = await getSharedUserIds(req.user.id);
     const loanRes = await db.query(
-      'SELECT * FROM prestamos WHERE id=$1 AND usuario_id=ANY($2)',
+      `SELECT p.*, c.telefono as cliente_telefono
+       FROM prestamos p
+       LEFT JOIN clientes c ON p.cliente_id = c.id
+       WHERE p.id=$1 AND p.usuario_id=ANY($2)`,
       [id, userIds]
     );
     if (loanRes.rows.length === 0)
@@ -1273,6 +1276,7 @@ app.get('/api/prestamos/:id/estado-cuenta', authenticateToken, async (req, res) 
   <div class="seccion">
     <h2>Información</h2>
     <p><strong>Deudor:</strong> ${loan.deudor}</p>
+    ${loan.cliente_telefono ? `<p><strong>Teléfono:</strong> ${loan.cliente_telefono}</p>` : ''}
     ${loan.concepto ? `<p><strong>Concepto:</strong> ${loan.concepto}</p>` : ''}
     <p><strong>Fecha de inicio:</strong> ${new Date(loan.fecha_inicio).toLocaleDateString('es-CO')}</p>
     <p><strong>Tasa de interés:</strong> ${loan.tasa_interes}% mensual</p>
