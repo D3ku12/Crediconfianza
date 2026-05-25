@@ -133,7 +133,7 @@ function rateLimit({ windowMs, max, message }) {
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 30,
   message: 'Demasiados intentos de inicio de sesión. Intente nuevamente en 15 minutos.'
 });
 
