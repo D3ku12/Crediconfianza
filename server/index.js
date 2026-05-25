@@ -111,9 +111,9 @@ function invalidateCache(req, res, next) {
 // ==========================================
 const rateLimitStore = new Map();
 
-function rateLimit({ windowMs, max, message }) {
+function rateLimit({ windowMs, max, message, getKey }) {
   return (req, res, next) => {
-    const key = req.ip;
+    const key = getKey ? getKey(req) : req.ip;
     const now = Date.now();
     let record = rateLimitStore.get(key);
 
@@ -134,13 +134,8 @@ function rateLimit({ windowMs, max, message }) {
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  message: 'Demasiados intentos de inicio de sesión. Intente nuevamente en 15 minutos.'
-});
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  message: 'Demasiadas solicitudes. Intente nuevamente más tarde.'
+  message: 'Demasiados intentos de inicio de sesión. Intente nuevamente en 15 minutos.',
+  getKey: (req) => req.body?.username || req.ip
 });
 
 // ==========================================
@@ -332,11 +327,6 @@ async function getSharedUserIds(userId, client = db) {
   return [userId];
 }
 
-
-// ==========================================
-// RATE LIMITING GENERAL PARA TODAS LAS RUTAS /api/
-// ==========================================
-app.use('/api/', apiLimiter);
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN
@@ -989,7 +979,7 @@ app.get('/api/prestamos', authenticateToken, async (req, res) => {
 });
 
 // POST /api/prestamos -> Crear préstamo (con validación)
-app.post('/api/prestamos', apiLimiter, authenticateToken, invalidateCache, validar({
+app.post('/api/prestamos', authenticateToken, invalidateCache, validar({
   deudor: { requerido: true, tipo: 'string', maxLength: 150 },
   capital_original: { requerido: true, tipo: 'numero' },
   tasa_interes: { requerido: false, tipo: 'numero', max: 100, min: 0 },
@@ -1656,7 +1646,7 @@ app.get('/api/caja/transacciones', authenticateToken, async (req, res) => {
 });
 
 // POST /api/caja/transacciones -> Registrar transacción manual (aporte o egreso, con validación)
-app.post('/api/caja/transacciones', apiLimiter, authenticateToken, invalidateCache, validar({
+app.post('/api/caja/transacciones', authenticateToken, invalidateCache, validar({
   monto: { requerido: true, tipo: 'numero' },
   tipo: { requerido: true, enum: ['ingreso', 'egreso'] },
   descripcion: { requerido: true, tipo: 'string', maxLength: 300 },
@@ -1706,7 +1696,7 @@ app.post('/api/caja/transacciones', apiLimiter, authenticateToken, invalidateCac
 });
 
 // PUT /api/caja/transacciones/:id -> Editar transacción manual (con validación)
-app.put('/api/caja/transacciones/:id', apiLimiter, authenticateToken, invalidateCache, validar({
+app.put('/api/caja/transacciones/:id', authenticateToken, invalidateCache, validar({
   monto: { requerido: true, tipo: 'numero' },
   tipo: { requerido: true, enum: ['ingreso', 'egreso'] },
   descripcion: { requerido: true, tipo: 'string', maxLength: 300 },
