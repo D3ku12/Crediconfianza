@@ -5,10 +5,12 @@ import { ModalConfirm } from './ModalConfirm';
 import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
 import { Wallet, PlusCircle, MinusCircle, Calendar, FileText, RefreshCw, Pencil, Trash2, DollarSign } from 'lucide-react';
+import { useRefresh } from '../contexts/RealtimeContext';
 
 export default function Caja() {
   const toast = useToast();
   const { formatear, limpiar } = useMoneda();
+  const refreshKey = useRefresh();
   const [saldo, setSaldo] = useState(0);
   const [transacciones, setTransacciones] = useState([]);
   const [montoDisplay, setMontoDisplay] = useState('');
@@ -39,7 +41,7 @@ export default function Caja() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchCajaData(); }, []);
+  useEffect(() => { fetchCajaData(); }, [refreshKey]);
 
   const handleTipoChange = (newTipo) => { setTipo(newTipo); setConcepto(newTipo === 'ingreso' ? 'aporte_capital' : 'pago_nomina'); setError(''); };
 

@@ -3,10 +3,12 @@ import { api, formatCOP, formatFecha } from '../utils/api';
 import { useToast } from './Toast';
 import { useMoneda } from '../hooks/useMoneda';
 import { CircleDollarSign, Calendar, FileText, ShieldCheck, HelpCircle, DollarSign } from 'lucide-react';
+import { useRefresh } from '../contexts/RealtimeContext';
 
 export default function Abonos({ selectedLoan, setSelectedLoan }) {
   const toast = useToast();
   const { formatear, limpiar } = useMoneda();
+  const refreshKey = useRefresh();
   const [prestamos, setPrestamos] = useState([]);
   const [selectedLoanId, setSelectedLoanId] = useState('');
   const [montoDisplay, setMontoDisplay] = useState('');
@@ -29,7 +31,7 @@ export default function Abonos({ selectedLoan, setSelectedLoan }) {
     finally { setLoadingLoans(false); }
   };
 
-  useEffect(() => { fetchLoans(); }, [selectedLoan]);
+  useEffect(() => { fetchLoans(); }, [selectedLoan, refreshKey]);
 
   const handleLoanChange = (e) => {
     const id = e.target.value; setSelectedLoanId(id); setError('');

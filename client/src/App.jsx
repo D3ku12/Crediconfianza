@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
+import { RealtimeProvider } from './contexts/RealtimeContext';
 import { Shield, Bell, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal } from 'lucide-react';
 import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
@@ -124,6 +125,7 @@ export default function App() {
 
   return (
     <ToastProvider>
+    <RealtimeProvider>
     <div className="min-h-screen w-full overflow-x-hidden" style={{ background: 'var(--color-bg)' }}>
       {/* Desktop Sidebar */}
       <Sidebar
@@ -254,6 +256,7 @@ export default function App() {
         </div>
       )}
     </div>
+    </RealtimeProvider>
     </ToastProvider>
   );
 }

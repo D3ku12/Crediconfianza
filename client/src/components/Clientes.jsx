@@ -1,8 +1,10 @@
 import { useState, useEffect, memo } from 'react';
 import { api } from '../utils/api';
 import { Edit3, Trash2, FileText } from 'lucide-react';
+import { useRefresh } from '../contexts/RealtimeContext';
 
 const Clientes = memo(function Clientes() {
+  const refreshKey = useRefresh();
   const [clientes, setClientes] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -17,7 +19,7 @@ const Clientes = memo(function Clientes() {
     finally { setCargando(false); }
   };
 
-  useEffect(() => { cargarClientes(); }, []);
+  useEffect(() => { cargarClientes(); }, [refreshKey]);
 
   const abrirNuevo = () => { setFormData({ nombre: '', telefono: '', descripcion: '' }); setClienteEditando(null); setMostrarFormulario(true); };
   const abrirEditar = (cliente) => { setFormData({ nombre: cliente.nombre || '', telefono: cliente.telefono || '', descripcion: cliente.descripcion || '' }); setClienteEditando(cliente); setMostrarFormulario(true); };

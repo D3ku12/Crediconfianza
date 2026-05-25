@@ -1,5 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
+import { createServer } from 'http'
+import { Server as SocketServer } from 'socket.io'
 import cors from 'cors'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
@@ -104,6 +106,23 @@ function cacheMiddleware(segundos) {
 function invalidateCache(req, res, next) {
   cache.clear();
   next();
+}
+
+// ==========================================
+// SERVIDOR HTTP + SOCKET.IO (tiempo real)
+// ==========================================
+const FRONTEND_URLS = ['https://credialiado.digital', 'https://www.credialiado.digital', 'http://localhost:5173', 'http://localhost:3000'];
+
+const httpServer = createServer(app);
+const io = new SocketServer(httpServer, {
+  cors: {
+    origin: FRONTEND_URLS,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+  }
+});
+
+function emitChange(tipo) {
+  io.emit('dataChange', { tipo, timestamp: Date.now() });
 }
 
 // ==========================================
@@ -400,6 +419,7 @@ app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res)
       mensaje: 'Usuario registrado con éxito.',
       usuario: result.rows[0]
     });
+    emitChange('usuarios');
   } catch (error) {
     console.error('Error al registrar usuario:', error);
     res.status(500).json({ mensaje: 'Error en el servidor al registrar usuario.' });
@@ -440,6 +460,7 @@ app.post('/api/grupos', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await db.query('INSERT INTO grupos (nombre) VALUES ($1) RETURNING *', [nombre.trim()]);
     res.status(201).json(result.rows[0]);
+    emitChange('usuarios');
   } catch (error) {
     console.error('Error al crear grupo:', error);
     res.status(500).json({ mensaje: 'Error al crear grupo.' });
@@ -456,6 +477,7 @@ app.delete('/api/grupos/:id', authenticateToken, requireAdmin, async (req, res) 
       return res.status(404).json({ mensaje: 'Grupo no encontrado.' });
     }
     res.json({ mensaje: 'Grupo eliminado. Los usuarios ahora tienen cuenta individual.' });
+    emitChange('usuarios');
   } catch (error) {
     console.error('Error al eliminar grupo:', error);
     res.status(500).json({ mensaje: 'Error al eliminar grupo.' });
@@ -495,6 +517,7 @@ app.put('/api/usuarios/:id/grupo', authenticateToken, requireAdmin, async (req, 
     }
     await db.query('UPDATE usuarios SET grupo_id = $1 WHERE id = $2', [grupo_id !== undefined ? grupo_id : null, id]);
     res.json({ mensaje: grupo_id ? 'Usuario asignado al grupo.' : 'Usuario removido del grupo (cuenta individual).' });
+    emitChange('usuarios');
   } catch (error) {
     console.error('Error al actualizar grupo del usuario:', error);
     res.status(500).json({ mensaje: 'Error al actualizar grupo del usuario.' });
@@ -514,6 +537,7 @@ app.delete('/api/usuarios/:id', authenticateToken, requireAdmin, async (req, res
     }
     await db.query('DELETE FROM usuarios WHERE id = $1', [id]);
     res.json({ mensaje: 'Usuario eliminado correctamente.' });
+    emitChange('usuarios');
   } catch (error) {
     console.error('Error al eliminar usuario:', error);
     res.status(500).json({ mensaje: 'Error al eliminar usuario.' });
@@ -606,6 +630,7 @@ app.post('/api/clientes', authenticateToken, async (req, res) => {
        descripcion?.trim() || null]
     );
     res.status(201).json(result.rows[0]);
+    emitChange('clientes');
   } catch (error) {
     console.error('Error al crear cliente:', error);
     res.status(500).json({ mensaje: 'Error al crear cliente.' });
@@ -628,6 +653,7 @@ app.put('/api/clientes/:id', authenticateToken, async (req, res) => {
     if (result.rows.length === 0)
       return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
     res.json(result.rows[0]);
+    emitChange('clientes');
   } catch (error) {
     console.error('Error al actualizar cliente:', error);
     res.status(500).json({ mensaje: 'Error al actualizar cliente.' });
@@ -650,6 +676,7 @@ app.delete('/api/clientes/:id', authenticateToken, async (req, res) => {
     if (result.rows.length === 0)
       return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
     res.json({ mensaje: 'Cliente eliminado.' });
+    emitChange('clientes');
   } catch (error) {
     console.error('Error al eliminar cliente:', error);
     res.status(500).json({ mensaje: 'Error al eliminar cliente.' });
@@ -1026,6 +1053,7 @@ app.post('/api/prestamos', authenticateToken, invalidateCache, validar({
     
     await client.query('COMMIT');
     res.status(201).json(nuevoPrestamo);
+    emitChange('prestamos');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al crear préstamo:', error);
@@ -1048,6 +1076,7 @@ app.patch('/api/prestamos/reparar/:uid', authenticateToken, requireAdmin, async 
       mensaje: `Préstamos reparados: ${result.rows.length}`,
       reparados: result.rows.length
     });
+    emitChange('prestamos');
   } catch (error) {
     console.error('Error al reparar préstamos:', error);
     res.status(500).json({ mensaje: 'Error al reparar préstamos.' });
@@ -1117,6 +1146,7 @@ app.put('/api/prestamos/:id', authenticateToken, invalidateCache, async (req, re
     await client.query('COMMIT');
     const updated = await db.query('SELECT * FROM prestamos WHERE id = $1', [id]);
     res.json(updated.rows[0]);
+    emitChange('prestamos');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al editar préstamo:', error);
@@ -1136,6 +1166,7 @@ app.delete('/api/prestamos/:id', authenticateToken, invalidateCache, async (req,
       return res.status(404).json({ mensaje: 'Préstamo no encontrado.' });
     }
     res.json({ mensaje: 'Préstamo eliminado con éxito.' });
+    emitChange('prestamos');
   } catch (error) {
     console.error('Error al eliminar préstamo:', error);
     res.status(500).json({ mensaje: 'Error al eliminar préstamo.' });
@@ -1528,6 +1559,7 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       mensaje: 'Abono registrado con éxito.',
       abono: nuevoAbono
     });
+    emitChange('abonos');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al registrar abono:', error);
@@ -1601,6 +1633,7 @@ app.delete('/api/abonos/:id', authenticateToken, invalidateCache, async (req, re
     
     await client.query('COMMIT');
     res.json({ mensaje: 'Abono eliminado con éxito.' });
+    emitChange('abonos');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al eliminar abono:', error);
@@ -1689,6 +1722,7 @@ app.post('/api/caja/transacciones', authenticateToken, invalidateCache, validar(
     );
 
     res.status(201).json(result.rows[0]);
+    emitChange('caja');
   } catch (error) {
     console.error('Error al registrar transacción de caja:', error);
     res.status(500).json({ mensaje: 'Error al registrar transacción de caja.' });
@@ -1751,6 +1785,7 @@ app.put('/api/caja/transacciones/:id', authenticateToken, invalidateCache, valid
 
     await client.query('COMMIT');
     res.json(result.rows[0]);
+    emitChange('caja');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al editar transacción de caja:', error);
@@ -1783,6 +1818,7 @@ app.delete('/api/caja/transacciones/:id', authenticateToken, invalidateCache, as
 
     await client.query('COMMIT');
     res.json({ mensaje: 'Transacción eliminada con éxito.' });
+    emitChange('caja');
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error al eliminar transacción de caja:', error);
@@ -1924,7 +1960,7 @@ process.on('uncaughtException', (err) => {
 
 // Inicializar BD y luego arrancar el servidor
 initializeDatabase().then(() => {
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`🚀 Servidor Express corriendo en el puerto ${PORT}`);
   });
 }).catch((err) => {

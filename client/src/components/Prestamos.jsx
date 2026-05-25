@@ -6,6 +6,7 @@ import { EstadoVacio } from './EstadoVacio';
 import { useMoneda } from '../hooks/useMoneda';
 import { Plus, Search, ChevronDown, ChevronUp, Calendar, DollarSign, Percent, Receipt, Edit, Trash2, FileDown } from 'lucide-react';
 import { generarEstadoCuentaPDF } from '../utils/pdfGenerator';
+import { useRefresh } from '../contexts/RealtimeContext';
 
 export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const toast = useToast();
@@ -14,6 +15,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const refreshKey = useRefresh();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLoanId, setEditingLoanId] = useState(null);
@@ -50,7 +52,7 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
     }
   };
 
-  useEffect(() => { fetchPrestamos(); }, []);
+  useEffect(() => { fetchPrestamos(); }, [refreshKey]);
 
   useEffect(() => {
     const cargarClientes = async () => {
