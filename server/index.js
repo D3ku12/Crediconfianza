@@ -1399,6 +1399,7 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
     }
     
     // Si el abono es de intereses, calcular si sobra para capital
+    let exceso = 0;
     if (tipo === 'interes') {
       const abonosPrevios = await client.query(
         'SELECT * FROM abonos WHERE prestamo_id = $1 ORDER BY fecha ASC',
@@ -1406,15 +1407,8 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       );
       const calculo = calcularIntereses(loan, abonosPrevios.rows);
       const interesPendiente = calculo.interes_pendiente;
-
       if (montoAbono > interesPendiente) {
-        const exceso = montoAbono - interesPendiente;
-        const nuevoCapital = Math.max(0, capitalPendienteActual - exceso);
-        const esActivo = nuevoCapital > 0;
-        await client.query(
-          'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
-          [nuevoCapital, esActivo, prestamo_id]
-        );
+        exceso = montoAbono - interesPendiente;
       }
     }
 
@@ -1425,6 +1419,24 @@ app.post('/api/abonos', authenticateToken, invalidateCache, async (req, res) => 
       [prestamo_id, montoAbono, tipo, fecha, nota || null]
     );
     const nuevoAbono = abonoInsert.rows[0];
+
+    // Si hay exceso de intereses, crear abono a capital automático
+    if (exceso > 0) {
+      const excesoNota = nota
+        ? `Exceso de pago intereses: ${nota}`
+        : 'Exceso de pago de intereses';
+      await client.query(
+        `INSERT INTO abonos (prestamo_id, monto, tipo, fecha, nota)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [prestamo_id, exceso, 'capital', fecha, excesoNota]
+      );
+      const nuevoCapital = Math.max(0, capitalPendienteActual - exceso);
+      const esActivo = nuevoCapital > 0;
+      await client.query(
+        'UPDATE prestamos SET capital_pendiente = $1, activo = $2 WHERE id = $3',
+        [nuevoCapital, esActivo, prestamo_id]
+      );
+    }
 
     // Registrar el ingreso en caja
     const tipoCaja = tipo === 'capital' ? 'abono_capital' : 'abono_interes';

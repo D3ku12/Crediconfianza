@@ -48,7 +48,7 @@ function calcularIntereses(prestamo, abonos) {
     fechaMes.setMonth(fechaInicio.getMonth() + i)
 
     const abonosCapital = (abonos || [])
-      .filter(a => a.tipo === 'capital' && new Date(a.fecha) <= fechaMes)
+      .filter(a => a.tipo === 'capital' && new Date(a.fecha) < fechaMes)
       .reduce((sum, a) => sum + parseFloat(a.monto), 0)
 
     capitalVigente = capitalOriginal - abonosCapital
