@@ -147,68 +147,59 @@ export default function App() {
           onClick={() => setDrawerAbierto(false)}
         />
         <aside
-          className={`absolute left-0 top-0 h-full w-[280px] bg-white shadow-2xl border-r transition-transform duration-300 overflow-y-auto ${drawerAbierto ? 'translate-x-0' : '-translate-x-full'}`}
-          style={{ background: 'var(--color-card-solid, #ffffff)', borderColor: 'var(--color-border)' }}
+          className={`absolute left-0 top-0 h-full w-[280px] bg-gray-900 shadow-2xl transition-transform duration-300 overflow-y-auto ${drawerAbierto ? 'translate-x-0' : '-translate-x-full'}`}
         >
-          <button
-            className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-lg border"
-            style={{ borderColor: 'var(--color-border)' }}
-            onClick={() => setDrawerAbierto(false)}
-            aria-label="Cerrar men\u00fa"
-          >
-            <X size={20} />
-          </button>
-          <div className="flex items-center gap-3 px-4 py-5 mb-4">
-            <span className="text-2xl">🤝</span>
-            <span className="text-lg font-extrabold tracking-tight" style={{ color: 'var(--color-primary)' }}>
-              CREDIALIADO
-            </span>
-          </div>
-          <nav className="px-3 space-y-0.5">
-            {userMenuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => { setActiveTab(item.id); setDrawerAbierto(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all relative"
-                  style={{
-                    color: isActive ? '#4F46E5' : 'var(--color-text-secondary)',
-                    background: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
-                  }}
-                >
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full" style={{ background: '#6C63FF' }} />
-                  )}
-                  <Icon size={20} className="flex-shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-          <div className="mt-6 px-3">
-            <button
-              onClick={() => { handleLogout(); setDrawerAbierto(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all"
-              style={{ color: '#EF4444' }}
-            >
-              Cerrar Sesi\u00f3n
-            </button>
-          </div>
-          {user && (
-            <div className="mt-auto px-3 pt-4 border-t mx-3" style={{ borderColor: 'var(--color-border)' }}>
-              <div className="flex items-center gap-3 py-2">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: 'var(--color-accent-soft)', color: 'var(--color-primary)' }}>
-                  {user.nombre_usuario?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--color-text)' }}>{user.nombre_usuario}</p>
-                  <p className="text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{user.es_admin ? 'Administrador' : 'Gestor'}</p>
+          <div className="p-6 min-h-full flex flex-col relative">
+            {/* Logo */}
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">C</div>
+              <span className="font-bold text-lg text-white">Credialiado</span>
+            </div>
+
+            {/* Navigation items */}
+            <nav className="flex-1">
+              {userMenuItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id); setDrawerAbierto(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all text-left ${
+                      isActive
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* User section at bottom */}
+            {user && (
+              <div className="mt-6">
+                <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl">
+                  <div className="w-9 h-9 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    {user.nombre_usuario?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-semibold truncate">{user.nombre_usuario}</p>
+                    <p className="text-gray-400 text-xs">{user.es_admin ? 'Administrador' : 'Gestor'}</p>
+                  </div>
+                  <button
+                    onClick={() => { handleLogout(); setDrawerAbierto(false); }}
+                    className="text-gray-400 hover:text-red-400 transition-colors text-lg flex-shrink-0"
+                    aria-label="Cerrar sesi\u00f3n"
+                  >
+                    🚪
+                  </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </aside>
       </div>
 

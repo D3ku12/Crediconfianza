@@ -220,60 +220,85 @@ export default function Prestamos({ setActiveTab, setSelectedLoanForAbono }) {
                   background: 'var(--color-card)',
                   boxShadow: isHighlighted ? '0 0 0 2px rgba(0,200,150,0.2)' : undefined,
                 }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-base truncate flex-1" style={{ color: 'var(--color-text)' }}>{loan.deudor}</span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ml-2 flex-shrink-0`}
-                      style={{ background: isActivo ? 'var(--success-bg)' : 'var(--danger-bg)', color: isActivo ? 'var(--success-text)' : 'var(--danger-text)', border: `1px solid ${isActivo ? 'var(--success-border)' : 'var(--danger-border)'}` }}>
-                      {isActivo ? 'Activo' : 'Pagado'}
+                  {/* HEADER */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-bold text-base" style={{ color: 'var(--color-text)' }}>{loan.deudor}</h3>
+                      <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Inicio: {formatFecha(loan.fecha_inicio)}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+                      isActivo ? 'bg-green-500/10 text-green-600' : 'bg-gray-500/10 text-gray-500'
+                    }`}>
+                      {isActivo ? 'Activo' : 'Saldado'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                    <div className="col-span-2 pb-1.5 mb-1.5 border-b" style={{ borderColor: 'var(--color-border)' }}>
-                      <span style={{ color: 'var(--color-text-secondary)' }}>Inicio: </span>
-                      <span className="font-semibold" style={{ color: 'var(--color-text)' }}>{formatFecha(loan.fecha_inicio)}</span>
-                    </div>
-                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Capital</span><span className="font-semibold font-mono" style={{ color: 'var(--color-text)' }}>{formatCOP(loan.capital_original)}</span></div>
-                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Pendiente</span><span className="font-semibold font-mono" style={{ color: 'var(--color-danger)' }}>{formatCOP(loan.capital_pendiente)}</span></div>
-                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Int. Mensual</span><span className="font-semibold font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.interes_mensual)}</span></div>
-                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Int. Pendiente</span><span className="font-semibold font-mono" style={{ color: parseFloat(loan.interes_pendiente) > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>{formatCOP(loan.interes_pendiente)}</span></div>
-                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Int. Cobrados</span><span className="font-semibold font-mono" style={{ color: 'var(--color-success)' }}>{formatCOP(loan.total_abonado_interes)}</span></div>
-                    <div><span className="block" style={{ color: 'var(--color-text-secondary)' }}>Tasa</span><span className="font-medium" style={{ color: 'var(--color-text)' }}>{parseFloat(loan.tasa_interes) === 0 ? <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-border)' }}>Sin interés</span> : `${loan.tasa_interes}%`}</span></div>
+
+                  {/* FINANCIAL GRID */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
+                    {[
+                      { label: 'Capital',        valor: loan.capital_original,        color: 'var(--color-text)' },
+                      { label: 'Pendiente',      valor: loan.capital_pendiente,       color: 'var(--color-danger)' },
+                      { label: 'Int. Mensual',   valor: loan.interes_mensual,         color: 'var(--color-primary)' },
+                      { label: 'Int. Pendiente', valor: loan.interes_pendiente,       color: 'var(--color-danger)' },
+                      { label: 'Int. Cobrados',  valor: loan.total_abonado_interes,   color: 'var(--color-success)' },
+                      { label: 'Tasa',           valor: `${loan.tasa_interes}%`,      color: 'var(--color-text)', raw: true },
+                    ].map(({ label, valor, color, raw }) => (
+                      <div key={label}>
+                        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{label}</p>
+                        <p className="font-semibold text-sm font-mono" style={{ color }}>
+                          {raw ? valor : formatCOP(valor)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
+                  {/* PRÓXIMO COBRO */}
                   {loan.proximo_vencimiento && (
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs mb-3" style={{
-                      background: loan.dias_para_vencer <= 5 ? 'rgba(255,71,87,0.08)' : loan.dias_para_vencer <= 10 ? 'rgba(255,184,48,0.08)' : 'var(--color-accent-soft)',
-                    }}>
-                      <span>📅</span>
-                      <span style={{
-                        color: loan.dias_para_vencer <= 5 ? 'var(--color-danger)' : loan.dias_para_vencer <= 10 ? 'var(--color-warning)' : 'var(--color-text-muted)',
-                        fontWeight: loan.dias_para_vencer <= 5 ? '600' : '400',
-                      }}>
-                        {loan.dias_para_vencer === 0 ? '⚠️ Vence hoy' : loan.dias_para_vencer < 0 ? `Venció hace ${Math.abs(loan.dias_para_vencer)} días` : `Próximo cobro: ${loan.proximo_vencimiento}`}
+                    <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl px-3 py-2 mb-3">
+                      <span className="text-xs" style={{ color: 'var(--color-primary)' }}>📅 Próximo cobro:</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--color-primary)' }}>
+                        {loan.dias_para_vencer === 0 ? '⚠️ Vence hoy' : loan.dias_para_vencer < 0 ? `Venció hace ${Math.abs(loan.dias_para_vencer)} días` : loan.proximo_vencimiento}
                       </span>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* ACTION BUTTONS */}
+                  <div className="flex gap-2 mt-3">
                     {isActivo && (
                       <button onClick={() => handleQuickAbonar(loan)}
-                        className="flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl text-sm font-semibold text-white transition-all"
-                        style={{ background: 'linear-gradient(135deg, #6C63FF, #5A52E0)' }}>
+                        className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold text-sm transition-all">
                         💰 Abonar
                       </button>
                     )}
                     <button onClick={() => handleGenerarPDF(loan)} disabled={generandoPDF === loan.id}
-                      className="flex items-center justify-center gap-1.5 min-h-[44px] rounded-xl text-sm font-medium transition-all"
-                      style={{ border: '1px solid var(--color-border)', color: 'var(--color-text)', background: 'var(--color-card)' }}>
-                      {generandoPDF === loan.id ? 'Generando...' : '📄 PDF'}
+                      className={`${isActivo ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2 border py-3 rounded-xl font-medium text-sm transition-all`}
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                      📄 {generandoPDF === loan.id ? '...' : 'PDF'}
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-center gap-2 mt-2">
-                    <button onClick={() => handleEditClick(loan)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} aria-label="Editar"><Edit size={15} /></button>
-                    <button onClick={() => handleDeletePrestamo(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'rgba(255,71,87,0.2)', color: 'var(--color-danger)' }} aria-label="Eliminar"><Trash2 size={15} /></button>
-                    <button onClick={() => handleToggleExpand(loan.id)} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border text-sm transition-all" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }} aria-label={isExpanded ? 'Colapsar' : 'Expandir'}>
-                      {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                  {/* EDIT / DELETE / EXPAND */}
+                  <div className="flex justify-center gap-3 mt-2 pt-2 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                    <button onClick={() => handleEditClick(loan)}
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-all"
+                      style={{ color: 'var(--color-text-secondary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#4F46E5'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}>
+                      ✏️ Editar
+                    </button>
+                    <button onClick={() => handleDeletePrestamo(loan.id)}
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-all"
+                      style={{ color: 'var(--color-text-secondary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#EF4444'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}>
+                      🗑️ Eliminar
+                    </button>
+                    <button onClick={() => handleToggleExpand(loan.id)}
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-all"
+                      style={{ color: 'var(--color-text-secondary)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#4F46E5'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-secondary)'; }}>
+                      {isExpanded ? '▲ Menos' : '▼ Más'}
                     </button>
                   </div>
 
