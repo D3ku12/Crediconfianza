@@ -3,6 +3,7 @@ import { api, formatCOP } from '../utils/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Percent, ArrowDownLeft, ShieldAlert, Wallet, AlertTriangle, Clock, Ban, CheckCircle } from 'lucide-react';
 import { subscribe } from '../contexts/RealtimeContext';
+import useNotifications from '../hooks/useNotifications';
 
 const MetricCard = memo(function MetricCard({ title, value, icon: Icon, delay = 0 }) {
   return (
@@ -91,16 +92,11 @@ export default function Resumen() {
 
   useEffect(() => subscribe(refreshData), []);
 
-  const prestamosEnRiesgo = useMemo(() => {
-    const hoy = new Date();
-    return prestamos.filter(p => {
-      const activo = parseFloat(p.capital_pendiente) > 0;
-      if (!activo) return false;
-      const ultimoAbono = new Date(p.fecha_inicio);
-      const mesesSinAbono = (hoy - ultimoAbono) / (1000 * 60 * 60 * 24 * 30);
-      return mesesSinAbono > 3 && parseFloat(p.total_abonado_interes || 0) === 0;
-    });
-  }, [prestamos]);
+  const { notifications } = useNotifications();
+  const bannerAlerts = useMemo(() =>
+    notifications.filter(n => n.type === 'danger' || n.type === 'warning').slice(0, 2),
+    [notifications]
+  );
 
   const activeLoans = useMemo(() => {
     return prestamos.filter(p => parseFloat(p.capital_pendiente) > 0);
@@ -166,14 +162,24 @@ export default function Resumen() {
 
   return (
     <div className="space-y-4">
-      {prestamosEnRiesgo.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{ background: 'color-mix(in srgb, var(--color-warning) 15%, transparent)', borderColor: 'var(--color-warning)' }}>
-          <AlertTriangle size={18} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />
-          <p className="text-sm font-medium" style={{ color: 'var(--color-warning)' }}>
-            ⚠️ {prestamosEnRiesgo.length} préstamo(s) llevan más de 3 meses sin registrar abonos
-          </p>
+      {bannerAlerts.map(n => (
+        <div
+          key={n.id}
+          className="flex items-start gap-3 px-4 py-3 rounded-xl border"
+          style={{
+            background: `color-mix(in srgb, ${n.type === 'danger' ? '#ef4444' : '#f59e0b'} 12%, transparent)`,
+            borderColor: n.type === 'danger' ? 'var(--color-danger)' : 'var(--color-warning)',
+          }}
+        >
+          <span className="text-base leading-none mt-0.5">{n.icon}</span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold" style={{ color: n.type === 'danger' ? 'var(--color-danger)' : 'var(--color-warning)' }}>
+              {n.title}
+            </p>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{n.message}</p>
+          </div>
         </div>
-      )}
+      ))}
 
       {prestamoMayorInteres && mayorInteresPendiente > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>

@@ -1978,122 +1978,183 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
 
 
 // ==========================================
-// RUTA DE NOTIFICACIONES
+// RUTA DE NOTIFICACIONES (UNIFICADA)
 // ==========================================
 
-// GET /api/notificaciones -> Obtener notificaciones dinámicas (mora, vencimientos, abonos hoy)
-app.get('/api/notificaciones', authenticateToken, async (req, res) => {
+const formatearCOP = (n) => '$' + Number(n).toLocaleString('es-CO');
+
+// GET /api/notifications -> Fuente ÚNICA de alertas (mora, vencimientos, abonos hoy)
+async function getNotificationsHandler(req, res) {
   try {
     const userIds = await getSharedUserIds(req.user.id);
-    const notificaciones = [];
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const manana = new Date(hoy.getTime() + 24 * 60 * 60 * 1000);
+    const hoyStr = hoy.toISOString().slice(0, 10);
+    const mananaStr = manana.toISOString().slice(0, 10);
 
-    // 1. Obtener todos los préstamos activos para cálculos de mora y vencimiento
-    const prestamosRes = await db.query(
-      `SELECT id, deudor as nombre, capital_original, capital_pendiente, tasa_interes, fecha_inicio
-       FROM prestamos
-       WHERE activo = true AND usuario_id = ANY($1)`,
+    const notifications = [];
+
+    // 1) MORA — días sin registrar abonos (último abono, o fecha_inicio si nunca abonó)
+    const moraRes = await db.query(
+      `SELECT p.id,
+              p.deudor,
+              p.capital_pendiente,
+              COALESCE(c.nombre, p.deudor) AS nombre,
+              COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio) AS ultima_fecha,
+              (CURRENT_DATE - COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio))::int AS dias_sin_abono
+       FROM prestamos p
+       LEFT JOIN clientes c ON p.cliente_id = c.id
+       WHERE p.activo = TRUE
+         AND p.usuario_id = ANY($1)
+         AND (CURRENT_DATE - COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio)) >= 1
+       ORDER BY dias_sin_abono DESC`,
       [userIds]
     );
 
-    for (const loan of prestamosRes.rows) {
-      const abonosRes = await db.query(
-        'SELECT monto, tipo, fecha FROM abonos WHERE prestamo_id = $1',
-        [loan.id]
-      );
-      const calculo = calcularIntereses(loan, abonosRes.rows);
-      
-      // dias_para_vencer < 0 = mora (ej. -65 = 65 días en mora)
-      // dias_para_vencer = 0 = vence hoy
-      // dias_para_vencer = 1 = vence mañana
-      // dias_para_vencer > 1 = aún no vence (sin notificación)
-      const diasMora = calculo.dias_para_vencer < 0 ? Math.abs(calculo.dias_para_vencer) : 0;
-      const fechaVenc = calculo.proximo_vencimiento; // texto legible ej. "15 de septiembre de 2026"
-
-      if (diasMora > 60) {
+    for (const r of moraRes.rows) {
+      if (r.dias_sin_abono > 60) {
         // 🔴 MORA +60 días — RIESGO ALTO
-        notificaciones.push({
-          id: `mora60_${loan.id}`,
-          type: 'mora_60',
-          message: `🔴 ${loan.nombre} lleva +${diasMora} días en mora — RIESGO ALTO — $${parseFloat(calculo.capital_pendiente).toLocaleString('es-CO')}`,
-          priority: 1,
-          createdAt: new Date().toISOString(),
-          prestamo_id: loan.id
+        notifications.push({
+          id: `mora60_${r.id}`,
+          type: 'danger',
+          icon: '🔴',
+          title: 'Mora crítica +60 días',
+          message: `${r.nombre} lleva ${r.dias_sin_abono} días sin registrar abonos — ${formatearCOP(r.capital_pendiente)}`,
+          createdAt: new Date(r.ultima_fecha).toISOString(),
+          link: '/prestamos',
+          prestamo_id: r.id
         });
-      } else if (diasMora >= 31) {
+      } else if (r.dias_sin_abono >= 31) {
         // 🟠 MORA 31-60 días
-        notificaciones.push({
-          id: `mora30_${loan.id}`,
-          type: 'mora_30_60',
-          message: `🟠 ${loan.nombre} lleva ${diasMora} días en mora`,
-          priority: 2,
-          createdAt: new Date().toISOString(),
-          prestamo_id: loan.id
+        notifications.push({
+          id: `mora30_${r.id}`,
+          type: 'warning',
+          icon: '🟠',
+          title: 'Mora 31-60 días',
+          message: `${r.nombre} lleva ${r.dias_sin_abono} días en mora`,
+          createdAt: new Date(r.ultima_fecha).toISOString(),
+          link: '/prestamos',
+          prestamo_id: r.id
         });
-      } else if (diasMora >= 1) {
+      } else {
         // 🟡 MORA 1-30 días
-        notificaciones.push({
-          id: `mora1_${loan.id}`,
-          type: 'mora_1_30',
-          message: `🟡 ${loan.nombre} lleva ${diasMora} día${diasMora > 1 ? 's' : ''} en mora`,
-          priority: 3,
-          createdAt: new Date().toISOString(),
-          prestamo_id: loan.id
-        });
-      } else if (calculo.dias_para_vencer === 0) {
-        // 🟡 Vence HOY
-        notificaciones.push({
-          id: `vence_hoy_${loan.id}`,
-          type: 'vence_hoy',
-          message: `📅 Cuota de ${loan.nombre} vence hoy`,
-          priority: 4,
-          createdAt: new Date().toISOString(),
-          prestamo_id: loan.id
-        });
-      } else if (calculo.dias_para_vencer === 1) {
-        // 🔵 Vence MAÑANA
-        notificaciones.push({
-          id: `vence_manana_${loan.id}`,
-          type: 'vence_manana',
-          message: `📅 Cuota de ${loan.nombre} vence mañana`,
-          priority: 5,
-          createdAt: new Date().toISOString(),
-          prestamo_id: loan.id
+        notifications.push({
+          id: `mora1_${r.id}`,
+          type: 'info',
+          icon: '🟡',
+          title: 'Mora temprana',
+          message: `${r.nombre} lleva ${r.dias_sin_abono} día${r.dias_sin_abono > 1 ? 's' : ''} sin abonar`,
+          createdAt: new Date(r.ultima_fecha).toISOString(),
+          link: '/prestamos',
+          prestamo_id: r.id
         });
       }
     }
 
-    // 2. Obtener abonos registrados hoy
-    const abonosHoyRes = await db.query(
-      `SELECT a.id, a.monto, p.deudor as nombre, a.creado_en, a.prestamo_id
-       FROM abonos a
-       JOIN prestamos p ON a.prestamo_id = p.id
-       WHERE DATE(a.creado_en) = CURRENT_DATE AND p.usuario_id = ANY($1)`,
+    // 2) VENCIMIENTOS — próxima cuota mensual derivada de fecha_inicio
+    const venRes = await db.query(
+      `SELECT p.id,
+              COALESCE(c.nombre, p.deudor) AS nombre,
+              TO_CHAR(LEAST((DATE_TRUNC('month', CURRENT_DATE) + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
+                            (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day')::date), 'YYYY-MM-DD') AS cuota_este_mes,
+              TO_CHAR(LEAST((DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month' + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
+                            (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '2 months - 1 day')::date), 'YYYY-MM-DD') AS cuota_proximo_mes
+       FROM prestamos p
+       LEFT JOIN clientes c ON p.cliente_id = c.id
+       WHERE p.activo = TRUE
+         AND p.usuario_id = ANY($1)`,
       [userIds]
     );
 
-    for (const abono of abonosHoyRes.rows) {
-      notificaciones.push({
-        id: `abono_${abono.id}`,
-        type: 'abono_hoy',
-        message: `✅ ${abono.nombre} realizó un abono de $${parseFloat(abono.monto).toLocaleString('es-CO')} hoy`,
-        priority: 6,
-        createdAt: abono.creado_en,
-        prestamo_id: abono.prestamo_id
+    for (const r of venRes.rows) {
+      const cuotaActual = r.cuota_este_mes;
+      if (cuotaActual === hoyStr) {
+        // 📅 Vence HOY
+        notifications.push({
+          id: `vence_hoy_${r.id}`,
+          type: 'warning',
+          icon: '📅',
+          title: 'Cuota por vencer',
+          message: `Cuota de ${r.nombre} vence hoy`,
+          createdAt: new Date().toISOString(),
+          link: '/prestamos',
+          prestamo_id: r.id
+        });
+      } else if (cuotaActual === mananaStr) {
+        // 📅 Vence MAÑANA
+        notifications.push({
+          id: `vence_manana_${r.id}`,
+          type: 'warning',
+          icon: '📅',
+          title: 'Cuota por vencer',
+          message: `Cuota de ${r.nombre} vence mañana`,
+          createdAt: new Date().toISOString(),
+          link: '/prestamos',
+          prestamo_id: r.id
+        });
+      } else if (cuotaActual < hoyStr) {
+        // ⚠️ Ya venció — la cuota del mes actual ya pasó
+        notifications.push({
+          id: `vencida_${r.id}`,
+          type: 'danger',
+          icon: '⚠️',
+          title: 'Cuota vencida',
+          message: `Cuota de ${r.nombre} venció el ${cuotaActual}`,
+          createdAt: new Date(cuotaActual).toISOString(),
+          link: '/prestamos',
+          prestamo_id: r.id
+        });
+      }
+    }
+
+    // 3) ABONOS REGISTRADOS HOY
+    const abonosRes = await db.query(
+      `SELECT a.id, a.monto, a.creado_en, a.prestamo_id,
+              COALESCE(c.nombre, p.deudor) AS nombre
+       FROM abonos a
+       JOIN prestamos p ON a.prestamo_id = p.id
+       LEFT JOIN clientes c ON p.cliente_id = c.id
+       WHERE DATE(a.creado_en) = CURRENT_DATE
+         AND p.usuario_id = ANY($1)
+       ORDER BY a.creado_en DESC`,
+      [userIds]
+    );
+
+    for (const ab of abonosRes.rows) {
+      notifications.push({
+        id: `abono_${ab.id}`,
+        type: 'success',
+        icon: '✅',
+        title: 'Abono registrado',
+        message: `${ab.nombre} abonó ${formatearCOP(ab.monto)} hoy`,
+        createdAt: ab.creado_en ? new Date(ab.creado_en).toISOString() : new Date().toISOString(),
+        prestamo_id: ab.prestamo_id
       });
     }
 
-    // 3. Ordenar por prioridad
-    notificaciones.sort((a, b) => a.priority - b.priority);
+    // 4) Ordenar por prioridad: danger > warning > info > success
+    const prioridad = { danger: 1, warning: 2, info: 3, success: 4 };
+    notifications.sort((a, b) =>
+      (prioridad[a.type] - prioridad[b.type]) ||
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
     res.json({
-      count: notificaciones.length,
-      notifications: notificaciones
+      notifications,
+      unreadCount: notifications.filter(n => n.type !== 'success').length
     });
   } catch (error) {
     console.error('Error al obtener notificaciones:', error);
     res.status(500).json({ mensaje: 'Error al obtener notificaciones.' });
   }
-});
+}
+
+// GET /api/notifications -> fuente única (campana 🔔 + banners del dashboard)
+app.get('/api/notifications', authenticateToken, getNotificationsHandler);
+
+// Alias retrocompatible
+app.get('/api/notificaciones', authenticateToken, getNotificationsHandler);
 
 // ==========================================
 // RUTA DE NOTIFICACIONES POR CORREO

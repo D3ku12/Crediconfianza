@@ -4,9 +4,9 @@ import Login from './components/Login';
 import { ToastProvider } from './components/Toast';
 import { RealtimeProvider } from './contexts/RealtimeContext';
 import { Shield, Bell, BarChart3, Receipt as ReceiptIcon, CircleDollarSign, Users, Wallet, MoreHorizontal, User } from 'lucide-react';
-import { api } from './utils/api';
 import { SelectorTema } from './components/SelectorTema';
 import { useTema } from './hooks/useTema';
+import useNotifications from './hooks/useNotifications';
 
 const Resumen = lazy(() => import('./components/Resumen'));
 const Prestamos = lazy(() => import('./components/Prestamos'));
@@ -27,6 +27,21 @@ function Spinner() {
   );
 }
 
+const typeColors = { danger: '#ef4444', warning: '#f59e0b', info: '#3b82f6', success: '#22c55e' };
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'ahora mismo';
+  if (min < 60) return `hace ${min} min`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `hace ${hr} h`;
+  const d = Math.floor(hr / 24);
+  if (d === 1) return 'hace 1 día';
+  return `hace ${d} días`;
+}
+
 const menuItems = [
   { id: 'resumen', label: 'Resumen', icon: BarChart3 },
   { id: 'prestamos', label: 'Préstamos', icon: CircleDollarSign },
@@ -43,46 +58,7 @@ export default function App() {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [verNotifs, setVerNotifs] = useState(false);
   const [showMobileMore, setShowMobileMore] = useState(false);
-  const [notificaciones, setNotificaciones] = useState([]);
-  const [notifCount, setNotifCount] = useState(0);
-
-  // Fetch notifications from backend
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const data = await api.getNotifications();
-      setNotificaciones(data.notifications || []);
-      const saved = localStorage.getItem('lastReadNotifications');
-      if (saved) {
-        // Badge shows alerts with priority <= 5 (everything except abonos)
-        const unread = (data.notifications || []).filter(n => n.priority <= 5);
-        setNotifCount(unread.length);
-      } else {
-        setNotifCount(data.count || 0);
-      }
-    } catch (err) { /* silent */ }
-  }, []);
-
-  // Poll every 60 seconds
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
-  const handleMarkAllRead = () => {
-    const now = new Date().toISOString();
-    localStorage.setItem('lastReadNotifications', now);
-    setNotifCount(0);
-  };
-
-  const notifStyles = {
-    mora_60:      { border: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-    mora_30_60:   { border: '#f97316', bg: 'rgba(249,115,22,0.08)' },
-    mora_1_30:    { border: '#eab308', bg: 'rgba(234,179,8,0.08)' },
-    vence_hoy:    { border: '#eab308', bg: 'rgba(234,179,8,0.06)' },
-    vence_manana: { border: '#3b82f6', bg: 'rgba(59,130,246,0.06)' },
-    abono_hoy:    { border: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
-  };
+  const { notifications, unreadCount, markAllRead } = useNotifications();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -190,44 +166,55 @@ export default function App() {
                 aria-label="Notificaciones"
               >
                 <Bell size={16} />
-                {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--color-danger)' }}>
-                    {notifCount > 99 ? '99+' : notifCount}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: '#ef4444' }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
               {verNotifs && (
                 <div className="absolute top-12 right-0 w-80 lg:w-96 z-[1000] rounded-xl shadow-xl border overflow-hidden animate-fade-in" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
                   <div className="px-4 py-3 border-b text-sm font-semibold flex justify-between items-center" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                    <span>Notificaciones {notificaciones.length > 0 && `(${notificaciones.length})`}</span>
-                    {notificaciones.length > 0 && (
+                    <span>Notificaciones {notifications.length > 0 && `(${notifications.length})`}</span>
+                    {notifications.length > 0 && (
                       <button
-                        onClick={handleMarkAllRead}
+                        onClick={markAllRead}
                         className="text-[11px] px-2 py-0.5 rounded-md transition-colors"
                         style={{ background: 'var(--color-primary)', color: 'white' }}
                       >
-                        Marcar como leído
+                        Marcar todo como leído
                       </button>
                     )}
                   </div>
                   <div className="max-h-80 overflow-y-auto">
-                    {notificaciones.length === 0 ? (
+                    {notifications.length === 0 ? (
                       <p className="px-4 py-4 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>✅ Todo al día, sin alertas pendientes</p>
                     ) : (
-                      notificaciones.map(n => {
-                        const st = notifStyles[n.type] || notifStyles.abono_hoy;
+                      notifications.map(n => {
+                        const color = typeColors[n.type] || '#64748b';
+                        const isLink = !!n.link;
                         return (
                           <div
                             key={n.id}
-                            className="px-4 py-2.5 text-sm border-b last:border-b-0"
+                            onClick={() => { if (isLink) { setActiveTab(n.link.replace('/', '')); setVerNotifs(false); } }}
+                            className={`px-4 py-2.5 text-sm border-b last:border-b-0 transition-colors ${isLink ? 'cursor-pointer hover:bg-black/5' : ''}`}
                             style={{
                               borderColor: 'var(--color-border)',
                               color: 'var(--color-text)',
-                              borderLeft: `3px solid ${st.border}`,
-                              background: st.bg,
+                              borderLeft: `3px solid ${color}`,
+                              background: `color-mix(in srgb, ${color} 8%, transparent)`,
                             }}
                           >
-                            {n.message}
+                            <div className="flex items-start gap-2.5">
+                              <span className="text-base leading-none mt-0.5">{n.icon || ''}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-semibold text-[13px] truncate">{n.title}</span>
+                                  <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--color-text-muted)' }}>{timeAgo(n.createdAt)}</span>
+                                </div>
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>{n.message}</p>
+                              </div>
+                            </div>
                           </div>
                         );
                       })
