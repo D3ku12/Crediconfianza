@@ -1996,18 +1996,31 @@ async function getNotificationsHandler(req, res) {
     const notifications = [];
 
     // 1) MORA — días sin registrar abonos (último abono, o fecha_inicio si nunca abonó)
+    //    Filtros de estado: activo, capital pendiente > 0 y sin abono posterior a la cuota
     const moraRes = await db.query(
       `SELECT p.id,
               p.deudor,
               p.capital_pendiente,
               COALESCE(c.nombre, p.deudor) AS nombre,
-              COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio) AS ultima_fecha,
-              (CURRENT_DATE - COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio))::int AS dias_sin_abono
+              cu.ultima_fecha,
+              (CURRENT_DATE - cu.ultima_fecha)::int AS dias_sin_abono
        FROM prestamos p
        LEFT JOIN clientes c ON p.cliente_id = c.id
+       CROSS JOIN LATERAL (
+         SELECT COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio) AS ultima_fecha,
+                LEAST((DATE_TRUNC('month', CURRENT_DATE) + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
+                      (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day')::date) AS cuota_este_mes
+       ) cu
        WHERE p.activo = TRUE
+         AND p.capital_pendiente > 0
          AND p.usuario_id = ANY($1)
-         AND (CURRENT_DATE - COALESCE((SELECT MAX(a.fecha) FROM abonos a WHERE a.prestamo_id = p.id), p.fecha_inicio)) >= 1
+         AND (CURRENT_DATE - cu.ultima_fecha) >= 1
+         AND NOT EXISTS (
+           SELECT 1 FROM abonos a
+           WHERE a.prestamo_id = p.id
+             AND a.fecha >= cu.cuota_este_mes
+             AND a.fecha <= CURRENT_DATE
+         )
        ORDER BY dias_sin_abono DESC`,
       [userIds]
     );
@@ -2053,17 +2066,29 @@ async function getNotificationsHandler(req, res) {
     }
 
     // 2) VENCIMIENTOS — próxima cuota mensual derivada de fecha_inicio
+    //    Filtros de estado: activo, capital pendiente > 0 y sin abono posterior a la cuota
     const venRes = await db.query(
       `SELECT p.id,
               COALESCE(c.nombre, p.deudor) AS nombre,
-              TO_CHAR(LEAST((DATE_TRUNC('month', CURRENT_DATE) + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
-                            (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day')::date), 'YYYY-MM-DD') AS cuota_este_mes,
-              TO_CHAR(LEAST((DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month' + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
-                            (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '2 months - 1 day')::date), 'YYYY-MM-DD') AS cuota_proximo_mes
+              TO_CHAR(cu.cuota_este_mes, 'YYYY-MM-DD') AS cuota_este_mes,
+              TO_CHAR(cu.cuota_proximo_mes, 'YYYY-MM-DD') AS cuota_proximo_mes
        FROM prestamos p
        LEFT JOIN clientes c ON p.cliente_id = c.id
+       CROSS JOIN LATERAL (
+         SELECT LEAST((DATE_TRUNC('month', CURRENT_DATE) + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
+                      (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month - 1 day')::date) AS cuota_este_mes,
+                LEAST((DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month' + (EXTRACT(DAY FROM p.fecha_inicio) - 1) * INTERVAL '1 day')::date,
+                      (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '2 months - 1 day')::date) AS cuota_proximo_mes
+       ) cu
        WHERE p.activo = TRUE
-         AND p.usuario_id = ANY($1)`,
+         AND p.capital_pendiente > 0
+         AND p.usuario_id = ANY($1)
+         AND NOT EXISTS (
+           SELECT 1 FROM abonos a
+           WHERE a.prestamo_id = p.id
+             AND a.fecha >= cu.cuota_este_mes
+             AND a.fecha <= CURRENT_DATE
+         )`,
       [userIds]
     );
 
