@@ -53,7 +53,8 @@ export default function App() {
       setNotificaciones(data.notifications || []);
       const saved = localStorage.getItem('lastReadNotifications');
       if (saved) {
-        const unread = (data.notifications || []).filter(n => n.priority <= 3);
+        // Badge shows alerts with priority <= 5 (everything except abonos)
+        const unread = (data.notifications || []).filter(n => n.priority <= 5);
         setNotifCount(unread.length);
       } else {
         setNotifCount(data.count || 0);
@@ -76,8 +77,10 @@ export default function App() {
 
   const notifStyles = {
     mora_60:      { border: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-    mora_30_60:   { border: '#eab308', bg: 'rgba(234,179,8,0.08)' },
-    vence_pronto: { border: '#f97316', bg: 'rgba(249,115,22,0.08)' },
+    mora_30_60:   { border: '#f97316', bg: 'rgba(249,115,22,0.08)' },
+    mora_1_30:    { border: '#eab308', bg: 'rgba(234,179,8,0.08)' },
+    vence_hoy:    { border: '#eab308', bg: 'rgba(234,179,8,0.06)' },
+    vence_manana: { border: '#3b82f6', bg: 'rgba(59,130,246,0.06)' },
     abono_hoy:    { border: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
   };
 

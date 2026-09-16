@@ -2002,34 +2002,60 @@ app.get('/api/notificaciones', authenticateToken, async (req, res) => {
       );
       const calculo = calcularIntereses(loan, abonosRes.rows);
       
-      // Si dias_para_vencer < 0, significa mora (ej. -65 = 65 días en mora)
+      // dias_para_vencer < 0 = mora (ej. -65 = 65 días en mora)
+      // dias_para_vencer = 0 = vence hoy
+      // dias_para_vencer = 1 = vence mañana
+      // dias_para_vencer > 1 = aún no vence (sin notificación)
       const diasMora = calculo.dias_para_vencer < 0 ? Math.abs(calculo.dias_para_vencer) : 0;
+      const fechaVenc = calculo.proximo_vencimiento; // texto legible ej. "15 de septiembre de 2026"
 
       if (diasMora > 60) {
+        // 🔴 MORA +60 días — RIESGO ALTO
         notificaciones.push({
           id: `mora60_${loan.id}`,
           type: 'mora_60',
-          message: `⚠️ ${loan.nombre} lleva +60 días en mora — $${parseFloat(calculo.capital_pendiente).toLocaleString('es-CO')}`,
+          message: `🔴 ${loan.nombre} lleva +${diasMora} días en mora — RIESGO ALTO — $${parseFloat(calculo.capital_pendiente).toLocaleString('es-CO')}`,
           priority: 1,
           createdAt: new Date().toISOString(),
           prestamo_id: loan.id
         });
-      } else if (diasMora >= 31 && diasMora <= 60) {
+      } else if (diasMora >= 31) {
+        // 🟠 MORA 31-60 días
         notificaciones.push({
           id: `mora30_${loan.id}`,
           type: 'mora_30_60',
-          message: `🕐 ${loan.nombre} lleva ${diasMora} días sin pagar`,
+          message: `🟠 ${loan.nombre} lleva ${diasMora} días en mora`,
           priority: 2,
           createdAt: new Date().toISOString(),
           prestamo_id: loan.id
         });
-      } else if (calculo.dias_para_vencer === 0 || calculo.dias_para_vencer === 1) {
-        const text = calculo.dias_para_vencer === 0 ? 'hoy' : 'mañana';
+      } else if (diasMora >= 1) {
+        // 🟡 MORA 1-30 días
         notificaciones.push({
-          id: `vence_${loan.id}`,
-          type: 'vence_pronto',
-          message: `📅 Cuota de ${loan.nombre} vence ${text}`,
+          id: `mora1_${loan.id}`,
+          type: 'mora_1_30',
+          message: `🟡 ${loan.nombre} lleva ${diasMora} día${diasMora > 1 ? 's' : ''} en mora`,
           priority: 3,
+          createdAt: new Date().toISOString(),
+          prestamo_id: loan.id
+        });
+      } else if (calculo.dias_para_vencer === 0) {
+        // 🟡 Vence HOY
+        notificaciones.push({
+          id: `vence_hoy_${loan.id}`,
+          type: 'vence_hoy',
+          message: `📅 Cuota de ${loan.nombre} vence hoy`,
+          priority: 4,
+          createdAt: new Date().toISOString(),
+          prestamo_id: loan.id
+        });
+      } else if (calculo.dias_para_vencer === 1) {
+        // 🔵 Vence MAÑANA
+        notificaciones.push({
+          id: `vence_manana_${loan.id}`,
+          type: 'vence_manana',
+          message: `📅 Cuota de ${loan.nombre} vence mañana`,
+          priority: 5,
           createdAt: new Date().toISOString(),
           prestamo_id: loan.id
         });
@@ -2050,7 +2076,7 @@ app.get('/api/notificaciones', authenticateToken, async (req, res) => {
         id: `abono_${abono.id}`,
         type: 'abono_hoy',
         message: `✅ ${abono.nombre} realizó un abono de $${parseFloat(abono.monto).toLocaleString('es-CO')} hoy`,
-        priority: 4,
+        priority: 6,
         createdAt: abono.creado_en,
         prestamo_id: abono.prestamo_id
       });
