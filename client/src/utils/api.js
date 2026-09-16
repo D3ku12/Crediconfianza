@@ -175,6 +175,7 @@ export const api = {
     }),
 
   // Notificaciones
+  getNotifications: () => request('/api/notificaciones'),
   sendNotification: (datos) =>
     request('/api/notificaciones/enviar', {
       method: 'POST',

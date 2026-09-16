@@ -41,36 +41,44 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('resumen');
   const [selectedLoan, setSelectedLoan] = useState(null);
-  const [prestamos, setPrestamos] = useState([]);
   const [verNotifs, setVerNotifs] = useState(false);
   const [showMobileMore, setShowMobileMore] = useState(false);
-  const [notifStatus, setNotifStatus] = useState({ id: null, loading: false, error: null, success: false });
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [notifCount, setNotifCount] = useState(0);
 
-  useEffect(() => {
-    api.getPrestamos().then(setPrestamos).catch(() => {});
+  // Fetch notifications from backend
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const data = await api.getNotifications();
+      setNotificaciones(data.notifications || []);
+      const saved = localStorage.getItem('lastReadNotifications');
+      if (saved) {
+        const unread = (data.notifications || []).filter(n => n.priority <= 3);
+        setNotifCount(unread.length);
+      } else {
+        setNotifCount(data.count || 0);
+      }
+    } catch (err) { /* silent */ }
   }, []);
 
-  const notificaciones = prestamos?.filter(p => {
-    if (!p.activo) return false;
-    const hoy = new Date();
-    const inicio = new Date(p.fecha_inicio);
-    const dias = (hoy - inicio) / (1000 * 60 * 60 * 24);
-    return dias > 90 && p.total_abonado_interes === 0;
-  }).map(p => ({
-    id: p.id,
-    deudor: p.deudor,
-    mensaje: `⚠️ ${p.deudor} lleva más de 3 meses sin abonar`
-  })) || [];
+  // Poll every 60 seconds
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
-  const handleSendNotification = async (n) => {
-    setNotifStatus({ id: n.id, loading: true, error: null, success: false });
-    try {
-      await api.sendNotification({ deudor: n.deudor, mensaje: n.mensaje });
-      setNotifStatus({ id: n.id, loading: false, error: null, success: true });
-      setTimeout(() => setNotifStatus({ id: null, loading: false, error: null, success: false }), 3000);
-    } catch (err) {
-      setNotifStatus({ id: n.id, loading: false, error: err.message, success: false });
-    }
+  const handleMarkAllRead = () => {
+    const now = new Date().toISOString();
+    localStorage.setItem('lastReadNotifications', now);
+    setNotifCount(0);
+  };
+
+  const notifStyles = {
+    mora_60:      { border: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+    mora_30_60:   { border: '#eab308', bg: 'rgba(234,179,8,0.08)' },
+    vence_pronto: { border: '#f97316', bg: 'rgba(249,115,22,0.08)' },
+    abono_hoy:    { border: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
   };
 
   useEffect(() => {
@@ -179,46 +187,49 @@ export default function App() {
                 aria-label="Notificaciones"
               >
                 <Bell size={16} />
-                {notificaciones.length > 0 && (
+                {notifCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center" style={{ background: 'var(--color-danger)' }}>
-                    {notificaciones.length}
+                    {notifCount > 99 ? '99+' : notifCount}
                   </span>
                 )}
               </button>
               {verNotifs && (
-                <div className="absolute top-12 right-0 w-72 lg:w-80 z-[1000] rounded-xl shadow-xl border overflow-hidden animate-fade-in" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
-                  <div className="px-4 py-3 border-b text-sm font-semibold" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                    Notificaciones
+                <div className="absolute top-12 right-0 w-80 lg:w-96 z-[1000] rounded-xl shadow-xl border overflow-hidden animate-fade-in" style={{ background: 'var(--color-card)', borderColor: 'var(--color-border)' }}>
+                  <div className="px-4 py-3 border-b text-sm font-semibold flex justify-between items-center" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
+                    <span>Notificaciones {notificaciones.length > 0 && `(${notificaciones.length})`}</span>
+                    {notificaciones.length > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[11px] px-2 py-0.5 rounded-md transition-colors"
+                        style={{ background: 'var(--color-primary)', color: 'white' }}
+                      >
+                        Marcar como leído
+                      </button>
+                    )}
                   </div>
-                  {notificaciones.length === 0 ? (
-                    <p className="px-4 py-3 text-sm" style={{ color: 'var(--color-text-secondary)' }}>✅ Todo al d\u00eda, sin alertas pendientes</p>
-                  ) : (
-                    notificaciones.map(n => (
-                      <div key={n.id} className="px-4 py-2.5 text-sm border-b last:border-b-0" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                        <div className="flex justify-between items-start gap-2">
-                          <p className="flex-1">{n.mensaje}</p>
-                          <button 
-                            onClick={() => handleSendNotification(n)}
-                            disabled={notifStatus.loading && notifStatus.id === n.id}
-                            className="px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 flex-shrink-0"
-                            style={{ background: 'var(--color-primary)', color: 'white' }}
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificaciones.length === 0 ? (
+                      <p className="px-4 py-4 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>✅ Todo al día, sin alertas pendientes</p>
+                    ) : (
+                      notificaciones.map(n => {
+                        const st = notifStyles[n.type] || notifStyles.abono_hoy;
+                        return (
+                          <div
+                            key={n.id}
+                            className="px-4 py-2.5 text-sm border-b last:border-b-0"
+                            style={{
+                              borderColor: 'var(--color-border)',
+                              color: 'var(--color-text)',
+                              borderLeft: `3px solid ${st.border}`,
+                              background: st.bg,
+                            }}
                           >
-                            {notifStatus.loading && notifStatus.id === n.id ? '...' : 'Notificar'}
-                          </button>
-                        </div>
-                        {notifStatus.id === n.id && notifStatus.error && (
-                          <div className="mt-2 text-[11px] p-1.5 rounded" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>
-                            ❌ {notifStatus.error}
+                            {n.message}
                           </div>
-                        )}
-                        {notifStatus.id === n.id && notifStatus.success && (
-                          <div className="mt-2 text-[11px] p-1.5 rounded" style={{ background: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}>
-                            ✅ Enviado
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
