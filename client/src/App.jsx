@@ -44,6 +44,7 @@ export default function App() {
   const [prestamos, setPrestamos] = useState([]);
   const [verNotifs, setVerNotifs] = useState(false);
   const [showMobileMore, setShowMobileMore] = useState(false);
+  const [notifStatus, setNotifStatus] = useState({ id: null, loading: false, error: null, success: false });
 
   useEffect(() => {
     api.getPrestamos().then(setPrestamos).catch(() => {});
@@ -57,8 +58,20 @@ export default function App() {
     return dias > 90 && p.total_abonado_interes === 0;
   }).map(p => ({
     id: p.id,
-    mensaje: `⚠️ ${p.deudor} lleva m\u00e1s de 3 meses sin abonar`
+    deudor: p.deudor,
+    mensaje: `⚠️ ${p.deudor} lleva más de 3 meses sin abonar`
   })) || [];
+
+  const handleSendNotification = async (n) => {
+    setNotifStatus({ id: n.id, loading: true, error: null, success: false });
+    try {
+      await api.sendNotification({ deudor: n.deudor, mensaje: n.mensaje });
+      setNotifStatus({ id: n.id, loading: false, error: null, success: true });
+      setTimeout(() => setNotifStatus({ id: null, loading: false, error: null, success: false }), 3000);
+    } catch (err) {
+      setNotifStatus({ id: n.id, loading: false, error: err.message, success: false });
+    }
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -182,7 +195,27 @@ export default function App() {
                   ) : (
                     notificaciones.map(n => (
                       <div key={n.id} className="px-4 py-2.5 text-sm border-b last:border-b-0" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}>
-                        {n.mensaje}
+                        <div className="flex justify-between items-start gap-2">
+                          <p className="flex-1">{n.mensaje}</p>
+                          <button 
+                            onClick={() => handleSendNotification(n)}
+                            disabled={notifStatus.loading && notifStatus.id === n.id}
+                            className="px-2 py-1 text-xs rounded transition-colors disabled:opacity-50 flex-shrink-0"
+                            style={{ background: 'var(--color-primary)', color: 'white' }}
+                          >
+                            {notifStatus.loading && notifStatus.id === n.id ? '...' : 'Notificar'}
+                          </button>
+                        </div>
+                        {notifStatus.id === n.id && notifStatus.error && (
+                          <div className="mt-2 text-[11px] p-1.5 rounded" style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger-border)' }}>
+                            ❌ {notifStatus.error}
+                          </div>
+                        )}
+                        {notifStatus.id === n.id && notifStatus.success && (
+                          <div className="mt-2 text-[11px] p-1.5 rounded" style={{ background: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-border)' }}>
+                            ✅ Enviado
+                          </div>
+                        )}
                       </div>
                     ))
                   )}

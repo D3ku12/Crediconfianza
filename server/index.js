@@ -6,6 +6,7 @@ import cors from 'cors'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import zlib from 'zlib'
+import nodemailer from 'nodemailer'
 import db from './db.js'
 import { authenticateToken, requireAdmin, JWT_SECRET } from './middleware/auth.js'
 import { calcularIntereses, ahoraCol } from './utils/calcularIntereses.js'
@@ -1975,6 +1976,50 @@ app.get('/api/resumen', authenticateToken, cacheMiddleware(30), async (req, res)
   }
 });
 
+
+// ==========================================
+// RUTA DE NOTIFICACIONES POR CORREO
+// ==========================================
+app.post('/api/notificaciones/enviar', authenticateToken, async (req, res) => {
+  const { deudor, mensaje } = req.body;
+  
+  console.log('[NOTIFY] Iniciando envío...');
+  console.log('[NOTIFY] Configuración SMTP:', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    user: process.env.SMTP_USER,
+    hasPass: !!process.env.SMTP_PASS,
+    to: process.env.NOTIFY_EMAIL
+  });
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false, 
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: `"Sistema de Alertas" <${process.env.SMTP_USER}>`,
+      to: process.env.NOTIFY_EMAIL || 'admin@localhost',
+      subject: `Alerta de Mora: ${deudor}`,
+      text: mensaje,
+      html: `<h3>Alerta de Mora</h3><p><strong>Deudor:</strong> ${deudor}</p><p>${mensaje}</p>`
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('[NOTIFY] Enviado exitosamente:', result.messageId);
+    res.json({ mensaje: 'Notificación enviada correctamente.' });
+  } catch (err) {
+    console.error('[NOTIFY] ERROR al enviar:', err.message);
+    // MUY IMPORTANTE: este error debe llegar al frontend
+    return res.status(500).json({ error: 'Error al enviar notificación: ' + err.message });
+  }
+});
 
 // ==========================================
 // MANEJO GLOBAL DE ERRORES NO CAPTURADOS

@@ -174,6 +174,13 @@ export const api = {
       body: JSON.stringify({ actual, nueva }),
     }),
 
+  // Notificaciones
+  sendNotification: (datos) =>
+    request('/api/notificaciones/enviar', {
+      method: 'POST',
+      body: JSON.stringify(datos),
+    }),
+
   // Estado de cuenta (retorna HTML)
   getPrestamoEstadoCuenta: (id) => requestHtml(`/api/prestamos/${id}/estado-cuenta`),
   getClienteEstadoCuenta: (id) => requestHtml(`/api/clientes/${id}/estado-cuenta`),
